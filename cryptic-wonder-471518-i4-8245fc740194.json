@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "cryptic-wonder-471518-i4",
+  "private_key_id": "8245fc74019473d0116d98843a3d597303722370",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCoh4lNsfxvs6A/\n4u7ucsbmrYxwOg53YuPYbiUxfmmfNfNhHYLcGWgdJHyjx2IK1ntBEBbdNotURx9R\nS3kacQiRvnNGxVp/WK9Arf4tKxvUC5intcUnZeJdfZBCgzJ1iyNzVGG4uU43AB/+\nI/VLSNWZa73lIq6mMLBMVeVkElRF9pMZc68BY+lhz3Bh7EZ8lHRzZWEJ4F8Xxfmc\n24OV4m5MSJvCJoFnZXD5xbx83B/FO1imZmogYDahtLP+PYUW7yl3M0aIa2hZE9t3\nbOAbWrRustEHScaAwIWFjwKY1SH5RPXtAP65Jf4okeK4Hl0kPPBvpDr3fpOT61BH\nuFg4RjkRAgMBAAECggEAFcx6QRd9nIEygDD9UNB908as/LM1vdGHwS32F6HPTa2v\nzmb/zzJmGibnDFQ05Uv6416OZoywlvUgIubNQlNOlXN5+7R5UTGKcaZP003ZKqNZ\nWpATcVYnYopkR4Yq17NooXlPrpIhgNG+UaQbDWLdZhveky3aQ1rW4vjVVA1e4zGc\nyZTyHstKw6JFCMpURpb6Q7PDyR/jdDvrsGZ178syDJowPLxF1LPtTUcJQ+foVDcW\nnUQ/T9vWJqbWNuR0VcSjp0oyZZt4tYoNkRL7dItz/WBLm2KG2II/Rn4C9/EAyJbT\np/xOGZesDAoGCzd8d9ITfZIDFquohRi0SyjMtFzaFQKBgQDhXmkX59GPvIchumsz\n5cVGyHo67j1LosM/wcr9wYKFgK0B5zS8wJmsnCqRoddistVsx0mIi+npHzweMXwT\nCzqYQpVlbeQpgIoUKLUZJuhpdOSVQX8lw9BUvBrVSlos/GvnUULVQvyXn97X3rp7\n4y0ucIdDBqiloK1njCP6XlVcbwKBgQC/b24i5o1w5sDu+x2A2XOeSm5Cf6rKIRsC\nNCXsh6oNtH+FOzwaFhaCpUoJGCrAobYySSWfG6FGszaSyb7m4V3aI552aknuZPjw\nb2g/CrTGlkKIIFM+Ko8i5zEHpj2R6nfePBKJUUPV+nVP9+AhLUtz2ewtONatwPP/\n3pumFVOCfwKBgGm6ux8l+KCwV80xAf40+5o7j2x6PHNxhpwwtKTb1fn/5iqQZ6Nt\n0Cq0kRwFi2CYeZww2oSe7zwZFUEtAgKFMBYilqghJ/t4fE780glcwYhH+L01Hwt+\nlAxMu2H5IdkdCxpYezxF0u7nZ8pqiZ55c8bnr+14AELD4NZFXtOk0fMtAoGAZLkK\nZ86KiObAiH0TjuHa1WQwE0j84ZD9lvE9KvBOZxubJMx/2PHaMi8pfxN6GxR6uoaG\nBusQthRBGIaRrQTSzp2DGKbf81CpMkhLvy+w4fPZWao4YjMeUKz3vSCYsJd/LizJ\nS/q4CHPZGZRAFvSwCGqWu0x2l8E4IF5N4trBr50CgYEA4P7n/H6jcrsmxLc4bdjS\nmTy50FL8pXxus7iSG6iuNtYzT/VTk4LzXA2phelMbSZEoLbJIBiGD4/3QwdyY9LC\nHxlW76kA3usbWuPQYasQtJtKBVNH+KZdkueTfHzL4nCH0IwOBz+G4knCH21k3jXL\ncBgYhF8GC8FmcUTCL/br2T8=\n-----END PRIVATE KEY-----\n",
+  "client_email": "google-sheets-service-account@cryptic-wonder-471518-i4.iam.gserviceaccount.com",
+  "client_id": "102510088897751290250",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/google-sheets-service-account%40cryptic-wonder-471518-i4.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

@@ -11,6 +11,10 @@
   "license": "ISC",
   "dependencies": {
     "express": "^5.1.0",
-    "mysql2": "^3.14.5"
+    "google-auth-library": "^10.3.0",
+    "google-spreadsheet": "^5.0.2",
+    "googleapis": "^159.0.0",
+    "mysql2": "^3.14.5",
+    "qrcode": "^1.5.4"
   }
 }
