@@ -4,6 +4,7 @@ const { JWT } = require('google-auth-library');
 // Cambiar la forma de obtener las credenciales
 async function writeToSheet(data) {
   // Obtener las credenciales desde la variable de entorno
+  console.log(process.env.google_sheets_credentials);
   const creds = JSON.parse(process.env.google_sheets_credentials); // Parseamos la cadena JSON
 
   const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';  // Reemplaza con tu ID de hoja
