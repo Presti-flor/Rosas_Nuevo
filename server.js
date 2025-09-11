@@ -5,11 +5,12 @@ const app = express();
 
 app.use(express.json());
 
+// Usar variables de entorno para la conexión
 const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'floresdb',
+  host: process.env.MYSQLHOST, // Variable proporcionada por Railway
+  user: process.env.MYSQLUSER, // Variable proporcionada por Railway
+  password: process.env.MYSQLPASSWORD, // Variable proporcionada por Railway
+  database: process.env.MYSQLDATABASE, // Variable proporcionada por Railway
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -21,7 +22,7 @@ const pool = mysql.createPool(dbConfig);
 async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, res) {
   // Validaciones
   if (!variedad || !bloque || !tallos || !tamali) {
-    return res.status(400).json({ mensaje: 'Faltan datos obligatorios: variedad, bloque, tallos, tamali' });
+    return res.status(400).json({ mensaje: 'Faltan datos obligatorios: variedad, bloque, tallos, tamali, fecha' });
   }
 
   // Convertir tallos a número
