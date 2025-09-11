@@ -16,7 +16,7 @@ user: 'root',
 
 password: 'aLIDjtASxTzdcwUxYonsNirVrgHBlpFB',
 
-database: 'registros',
+database: 'railway',
 
 waitForConnections: true,
 
