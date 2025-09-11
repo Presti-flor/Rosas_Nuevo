@@ -1,36 +1,40 @@
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
+// Cambiar la forma de obtener las credenciales
 async function writeToSheet(data) {
-  const creds = require('./clavesadmin.json');
-  const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';
-  const SHEET_NAME = 'Hoja111';
+  // Obtener las credenciales desde la variable de entorno
+  const creds = JSON.parse(process.env.google_sheets_credentials); // Parseamos la cadena JSON
+
+  const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';  // Reemplaza con tu ID de hoja
+  const SHEET_NAME = 'Hoja111';  // Reemplaza con el nombre de tu hoja en Google Sheets
 
   // Configurar autenticación JWT correctamente
   const serviceAccountAuth = new JWT({
     email: creds.client_email,
-    key: creds.private_key.replace(/\\n/g, '\n'),
-    scopes: [
-      'https://www.googleapis.com/auth/spreadsheets',
-    ],
+    key: creds.private_key.replace(/\\n/g, '\n'),  // Asegura que los saltos de línea en la clave sean correctos
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 
-  // Pasar la autenticación directamente al constructor
+  // Crear la instancia del documento de Google Sheets
   const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 
   try {
-    // Ya no es necesario llamar a useServiceAccountAuth
+    // Cargar la información de la hoja
     await doc.loadInfo();
 
+    // Obtener la hoja por título
     let sheet = doc.sheetsByTitle[SHEET_NAME];
-    
+
+    // Si no existe la hoja, crearla
     if (!sheet) {
-      sheet = await doc.addSheet({ 
-        title: SHEET_NAME, 
-        headerValues: ['variedad', 'bloque', 'tallos', 'tamali', 'fecha'] 
+      sheet = await doc.addSheet({
+        title: SHEET_NAME,
+        headerValues: ['variedad', 'bloque', 'tallos', 'tamali', 'fecha']
       });
     }
 
+    // Crear el objeto con los datos que se insertarán en la hoja
     const rowData = {
       variedad: data.variedad,
       bloque: data.bloque,
@@ -39,6 +43,7 @@ async function writeToSheet(data) {
       fecha: data.fecha || new Date().toLocaleDateString('es-ES')
     };
 
+    // Agregar la fila a la hoja de cálculo
     await sheet.addRow(rowData);
     console.log('✅ Datos agregados correctamente en Google Sheets');
   } catch (error) {
