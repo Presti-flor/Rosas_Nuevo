@@ -4,6 +4,15 @@ const app = express();
 
 app.use(express.json());
 
+// Lista de IPs autorizadas
+const authorizedIPs = ['190.61.45.230', '162.120.185.222']; // Agrega las IPs de tus dispositivos autorizados
+
+// Función para validar la IP del dispositivo
+function validateIP(req) {
+  const ip = req.ip || req.connection.remoteAddress;
+  return authorizedIPs.includes(ip);
+}
+
 // Función para procesar y guardar registros en Google Sheets
 async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, res) {
   // Validaciones
@@ -41,6 +50,10 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, res) 
 
 // Endpoint POST para registrar datos solo en Google Sheets
 app.post('/api/registrar', async (req, res) => {
+  if (!validateIP(req)) {
+    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
+  }
+
   try {
     const { variedad, bloque, tallos, tamali, fecha } = req.body;
     const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, res);
@@ -52,17 +65,20 @@ app.post('/api/registrar', async (req, res) => {
 
 // Nuevo endpoint GET para recibir parámetros por URL y registrar en Google Sheets
 app.get('/api/registrar', async (req, res) => {
+  if (!validateIP(req)) {
+    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
+  }
+
+  const { variedad, bloque, tallos, tamali, fecha } = req.query;
+
+  // Validar parámetros requeridos
+  if (!variedad || !bloque || !tallos || !tamali) {
+    return res.status(400).json({
+      mensaje: 'Faltan parámetros requeridos en la URL. Ejemplo: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08'
+    });
+  }
+
   try {
-    // Extraer parámetros de la query string
-    const { variedad, bloque, tallos, tamali, fecha } = req.query;
-
-    // Validar parámetros requeridos
-    if (!variedad || !bloque || !tallos || !tamali) {
-      return res.status(400).json({
-        mensaje: 'Faltan parámetros requeridos en la URL. Ejemplo: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08'
-      });
-    }
-
     const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, res);
     res.json(result);
   } catch (err) {
