@@ -1,19 +1,14 @@
 const express = require('express');
-const writeToSheet = require('./google-sheets'); // Asumimos que tienes la función que escribe en Google Sheets
+const writeToSheet = require('./google-sheets'); // Función para escribir en Google Sheets
 const app = express();
 
 app.use(express.json());
 
-// Función para generar un identificador único
-function generateUniqueId() {
-  return new Date().getTime(); // Un número único basado en el tiempo
-}
-
-// Función para procesar y guardar registros solo en Google Sheets
-async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, uniqueId, res) {
+// Función para procesar y guardar registros en Google Sheets
+async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, res) {
   // Validaciones
   if (!variedad || !bloque || !tallos || !tamali) {
-    return res.status(400).json({ mensaje: 'Faltan datos obligatorios: variedad, bloque, tallos, tamali, fecha' });
+    return res.status(400).json({ mensaje: 'Faltan datos obligatorios: variedad, bloque, tallos, tamali' });
   }
 
   // Convertir tallos a número
@@ -22,25 +17,24 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, uniqu
     return res.status(400).json({ mensaje: 'El parámetro tallos debe ser un número válido' });
   }
 
-  // Procesar fecha (usar la actual si no se proporciona)
+  // Procesar fecha (usar actual si no se proporciona)
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
-  
+
   try {
     // Solo guardar en Google Sheets
-    await writeToSheet({
+    const result = await writeToSheet({
       variedad,
       bloque,
       tallos: tallosNum,
       tamali,
-      fecha: fechaProcesada,
-      uniqueId // Guardar también el uniqueId para identificación del escaneo
+      fecha: fechaProcesada
     });
 
     return {
       mensaje: 'Registro guardado en Google Sheets ✅'
     };
   } catch (err) {
-    console.error('❌ Error al guardar en Google Sheets:', err);
+    console.error('❌ Error al guardar:', err);
     throw new Error('Error al guardar en Google Sheets');
   }
 }
@@ -49,11 +43,7 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, uniqu
 app.post('/api/registrar', async (req, res) => {
   try {
     const { variedad, bloque, tallos, tamali, fecha } = req.body;
-
-    // Generar un uniqueId único basado en el timestamp
-    const uniqueId = generateUniqueId();
-
-    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, uniqueId, res);
+    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, res);
     res.json(result);
   } catch (err) {
     res.status(500).json({ mensaje: err.message });
@@ -68,15 +58,12 @@ app.get('/api/registrar', async (req, res) => {
 
     // Validar parámetros requeridos
     if (!variedad || !bloque || !tallos || !tamali) {
-      return res.status(400).json({ 
-        mensaje: 'Faltan parámetros requeridos en la URL. Ejemplo: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08' 
+      return res.status(400).json({
+        mensaje: 'Faltan parámetros requeridos en la URL. Ejemplo: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08'
       });
     }
 
-    // Generar un uniqueId único basado en el timestamp
-    const uniqueId = generateUniqueId();
-
-    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, uniqueId, res);
+    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, res);
     res.json(result);
   } catch (err) {
     res.status(500).json({ mensaje: err.message });
@@ -94,7 +81,6 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Iniciar servidor
 app.listen(3000, () => {
   console.log('Servidor corriendo en http://localhost:3000');
   console.log('Prueba el registro con: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08');

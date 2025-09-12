@@ -31,17 +31,19 @@ async function writeToSheet(data) {
     if (!sheet) {
       sheet = await doc.addSheet({
         title: SHEET_NAME,
-        headerValues: ['variedad', 'bloque', 'tallos', 'tamali', 'fecha']
+        headerValues: ['Unique ID', 'variedad', 'bloque', 'tallos', 'tamali', 'fecha'] // Agregar columna Unique ID
       });
     }
 
     // Crear el objeto con los datos que se insertarán en la hoja
     const rowData = {
-      variedad: data.variedad,
-      bloque: data.bloque,
-      tallos: data.tallos,
-      tamali: data.tamali,
-      fecha: data.fecha || new Date().toLocaleDateString('es-ES')
+      // Generar un ID único para cada entrada, puedes usar la fecha, un hash o lo que desees
+      'Unique ID': new Date().getTime(),  // Aquí estamos usando el timestamp como Unique ID (puedes cambiar esto)
+      'variedad': data.variedad,
+      'bloque': data.bloque,
+      'tallos': data.tallos,
+      'tamali': data.tamali,
+      'fecha': data.fecha || new Date().toLocaleDateString('es-ES')  // Si no se pasa la fecha, toma la actual
     };
 
     // Agregar la fila a la hoja de cálculo
