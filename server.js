@@ -5,12 +5,13 @@ const app = express();
 app.use(express.json());
 
 // Lista de IPs autorizadas
-const authorizedIPs = ['190.61.45.230', '192.268.10.23', '192.168.10.23', '192.168.10.1', '162.120.185.222']; // Agrega las IPs de tus dispositivos autorizados
+const authorizedIPs = ['190.61.45.230', '192.168.10.23', '192.168.10.1']; // Agrega las IPs de tus dispositivos autorizados
 
 // Función para validar la IP del dispositivo
 function validateIP(req) {
-  const ip = req.ip || req.connection.remoteAddress;
-  return authorizedIPs.includes(ip);
+  const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;  // Obtener IP real si hay proxy
+  console.log("IP del cliente:", clientIP); // Para verificar la IP
+  return authorizedIPs.includes(clientIP);
 }
 
 // Función para procesar y guardar registros en Google Sheets
