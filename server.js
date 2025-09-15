@@ -5,7 +5,7 @@ const app = express();
 app.use(express.json());
 
 // Lista de IPs autorizadas
-const authorizedIPs = ['186.102.77.146','190.61.45.230', '192.168.10.23', '192.168.10.1']; // Agrega las IPs de tus dispositivos autorizados
+const authorizedIPs = ['186.102.77.146', '190.61.45.230', '192.168.10.23', '192.168.10.1']; // Agrega las IPs de tus dispositivos autorizados
 
 // Función para validar la IP del dispositivo
 function validateIP(req) {
@@ -15,7 +15,7 @@ function validateIP(req) {
 }
 
 // Función para procesar y guardar registros en Google Sheets
-async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, res) {
+async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa, res) {
   // Validaciones
   if (!variedad || !bloque || !tallos || !tamali) {
     return res.status(400).json({ mensaje: 'Faltan datos obligatorios: variedad, bloque, tallos, tamali' });
@@ -37,7 +37,8 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, res) 
       bloque,
       tallos: tallosNum,
       tamali,
-      fecha: fechaProcesada
+      fecha: fechaProcesada,
+      etapa // Aquí agregamos el campo 'etapa'
     });
 
     return {
@@ -56,8 +57,8 @@ app.post('/api/registrar', async (req, res) => {
   }
 
   try {
-    const { variedad, bloque, tallos, tamali, fecha } = req.body;
-    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, res);
+    const { variedad, bloque, tallos, tamali, fecha, etapa } = req.body;  // Agregamos 'etapa'
+    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa, res);
     res.json(result);
   } catch (err) {
     res.status(500).json({ mensaje: err.message });
@@ -70,17 +71,17 @@ app.get('/api/registrar', async (req, res) => {
     return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
   }
 
-  const { variedad, bloque, tallos, tamali, fecha } = req.query;
+  const { variedad, bloque, tallos, tamali, fecha, etapa } = req.query;  // Agregamos 'etapa'
 
   // Validar parámetros requeridos
-  if (!variedad || !bloque || !tallos || !tamali) {
+  if (!variedad || !bloque || !tallos || !tamali || !etapa) {  // Verificamos si falta 'etapa'
     return res.status(400).json({
-      mensaje: 'Faltan parámetros requeridos en la URL. Ejemplo: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08'
+      mensaje: 'Faltan parámetros requeridos en la URL. Ejemplo: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08&etapa=ingreso'
     });
   }
 
   try {
-    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, res);
+    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa, res);
     res.json(result);
   } catch (err) {
     res.status(500).json({ mensaje: err.message });
@@ -93,12 +94,12 @@ app.get('/', (req, res) => {
     <h1>Sistema de Registro de Flores</h1>
     <p>Ejemplo de URL para registro:</p>
     <code>
-      http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08
+      http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08&etapa=ingreso
     </code>
   `);
 });
 
 app.listen(3000, () => {
   console.log('Servidor corriendo en http://localhost:3000');
-  console.log('Prueba el registro con: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08');
+  console.log('Prueba el registro con: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08&etapa=ingreso');
 });
