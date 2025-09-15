@@ -31,7 +31,7 @@ async function writeToSheet(data) {
     if (!sheet) {
       sheet = await doc.addSheet({
         title: SHEET_NAME,
-        headerValues: ['Unique ID', 'variedad', 'bloque', 'tallos', 'tamali', 'fecha'] // Agregar columna Unique ID
+        headerValues: ['Unique ID', 'variedad', 'bloque', 'tallos', 'tamali', 'fecha', 'etapa'] // Agregar columna Unique ID
       });
     }
 
@@ -43,7 +43,8 @@ async function writeToSheet(data) {
       'bloque': data.bloque,
       'tallos': data.tallos,
       'tamali': data.tamali,
-      'fecha': data.fecha || new Date().toLocaleDateString('es-ES')  // Si no se pasa la fecha, toma la actual
+      'fecha': data.fecha || new Date().toLocaleDateString('es-ES'),  // Si no se pasa la fecha, toma la actual
+      'etapa': data.etapa
     };
 
     // Agregar la fila a la hoja de cálculo
