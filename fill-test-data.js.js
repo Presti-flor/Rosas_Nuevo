@@ -34,7 +34,8 @@ async function testGoogleSheets() {
             bloque: 5,
             tallos: 30,
             tamali: 'Mediano',
-            fecha: '2025-09-08'
+            fecha: '2025-09-08',
+            etapa: 'Ingreso'
         });
 
         console.log('✅ Datos agregados correctamente en la hoja "Hoja111"');
