@@ -1,3 +1,4 @@
+
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
@@ -35,12 +36,10 @@ async function writeToSheet(data) {
       });
     }
 
-    const startingRow = 3;
-
     // Crear el objeto con los datos que se insertarán en la hoja
     const rowData = {
-      // Generar un ID único para cada entrada, puedes usar la fecha, un hash o lo que desees
-      'Unique ID': new Date().getTime(),  // Aquí estamos usando el timestamp como Unique ID (puedes cambiar esto)
+      // Generar un ID único utilizando UUID
+      'Unique ID': new Date().getTime(),  // Aquí generamos un ID único con timestamp
       'variedad': data.variedad,
       'bloque': data.bloque,
       'tallos': data.tallos,
@@ -49,8 +48,13 @@ async function writeToSheet(data) {
       'etapa': data.etapa
     };
 
-    // Agregar la fila a la hoja de cálculo
-    await sheet.addRow(rowData);
+    // Obtener las filas ya existentes en la hoja
+    const rows = await sheet.getRows();
+
+    // Escribir los datos a partir de la fila 3
+    const rowIndex = rows.length + 3;  // Esto asegura que los datos empiecen desde la fila 3
+
+    await sheet.addRow(rowData, { rowIndex });
     console.log('✅ Datos agregados correctamente en Google Sheets');
   } catch (error) {
     console.error('❌ Error al interactuar con Google Sheets:', error);
