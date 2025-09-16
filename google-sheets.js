@@ -35,8 +35,7 @@ async function writeToSheet(data) {
       });
     }
 
-    const insertRow = 3;
-    worksheet.insertRow = + 3;
+    worksheet.insertRow = 3;
 
     // Crear el objeto con los datos que se insertarán en la hoja
     const rowData = {
