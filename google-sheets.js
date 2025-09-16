@@ -35,6 +35,8 @@ async function writeToSheet(data) {
       });
     }
 
+    const startingRow = 3;
+
     // Crear el objeto con los datos que se insertarán en la hoja
     const rowData = {
       // Generar un ID único para cada entrada, puedes usar la fecha, un hash o lo que desees
