@@ -5,7 +5,7 @@ const app = express();
 app.use(express.json());
 
 // Lista de IPs autorizadas
-const authorizedIPs = ['186.102.77.146', '186.102.55.56', '190.61.45.230', '192.168.10.23', '192.168.10.1', '186.102.62.30']; // Agrega las IPs de tus dispositivos autorizados
+const authorizedIPs = ['186.102.77.146', '186.102.86.56', '186.102.55.56', '190.61.45.230', '192.168.10.23', '192.168.10.1', '186.102.62.30']; // Agrega las IPs de tus dispositivos autorizados
 
 // Función para validar la IP del dispositivo
 function validateIP(req) {
