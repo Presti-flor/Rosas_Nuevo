@@ -40,11 +40,11 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
     etapa
   });
 
-  // Si es para una app web
   return {
-    success: true,
-    mensaje: 'Registro guardado en Google Sheets',
-    html: '<div style="font-size: 24px; font-weight: bold; color: green; text-align: center; padding: 20px; border: 2px solid green; background-color: #f0fff0;">✅ Registro guardado en Google Sheets</div>'
+    mensaje: '══════════════════════════════════\n' +
+             '   REGISTRO GUARDADO EXITOSAMENTE\n' +
+             '══════════════════════════════════\n' +
+             '✅ Guardado en Google Sheets'
   };
 } catch (err) {
   console.error('❌ Error al guardar:', err);
