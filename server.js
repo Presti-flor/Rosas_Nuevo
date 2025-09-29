@@ -31,23 +31,23 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
   try {
-    // Solo guardar en Google Sheets
-    const result = await writeToSheet({
-      variedad,
-      bloque,
-      tallos: tallosNum,
-      tamali,
-      fecha: fechaProcesada,
-      etapa // Aquí agregamos el campo 'etapa'
-    });
+  // Solo guardar en Google Sheets
+  const result = await writeToSheet({
+    variedad,
+    bloque,
+    tallos: tallosNum,
+    tamali,
+    fecha: fechaProcesada,
+    etapa // Aquí agregamos el campo 'etapa'
+  });
 
-    return {
-      mensaje: 'Registro guardado en Google Sheets ✅'
-    };
-  } catch (err) {
-    console.error('❌ Error al guardar:', err);
-    throw new Error('Error al guardar en Google Sheets');
-  }
+  return {
+    mensaje: '<h1 style="font-size: 2em; text-align: center;">Registro guardado en Google Sheets ✅</h1>'
+  };
+} catch (err) {
+  console.error('❌ Error al guardar:', err);
+  throw new Error('Error al guardar en Google Sheets');
+}
 }
 
 // Endpoint POST para registrar datos solo en Google Sheets
