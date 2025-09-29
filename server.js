@@ -30,31 +30,26 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
   // Procesar fecha (usar actual si no se proporciona)
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
+  function doGet() {
   try {
-    // Solo guardar en Google Sheets
-    const result = await writeToSheet({
+    const result = writeToSheet({
       variedad,
       bloque,
       tallos: tallosNum,
       tamali,
       fecha: fechaProcesada,
-      etapa // Aquí agregamos el campo 'etapa'
+      etapa
     });
 
-    try {
-    await addRecord(data);
-    res.send(`
-      <html lang="es">
-      
-      <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
-        <h1>✅ Datos guardados correctamente</h1>
-      </body>
-      </html>
-    `);
+    return HtmlService.createHtmlOutput(
+      '<h1 style="font-size:32px; color:green;">Registro guardado en Google Sheets ✅</h1>'
+    );
   } catch (err) {
-    console.error('❌ Error al guardar:', err);
-    throw new Error('Error al guardar en Google Sheets');
+    return HtmlService.createHtmlOutput(
+      '<h1 style="font-size:32px; color:red;">❌ Error al guardar en Google Sheets</h1>'
+    );
   }
+}
 }
 
 // Endpoint POST para registrar datos solo en Google Sheets
