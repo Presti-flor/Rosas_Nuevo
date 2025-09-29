@@ -41,9 +41,16 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
       etapa // Aquí agregamos el campo 'etapa'
     });
 
-    return HtmlService.createHtmlOutput(
-      '<h1 style="font-size:32px; color:green;">Registro guardado en Google Sheets ✅</h1>'
-        );
+    try {
+    await addRecord(data);
+    res.send(`
+      <html lang="es">
+      
+      <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
+        <h1>✅ Datos guardados correctamente</h1>
+      </body>
+      </html>
+    `);
   } catch (err) {
     console.error('❌ Error al guardar:', err);
     throw new Error('Error al guardar en Google Sheets');
