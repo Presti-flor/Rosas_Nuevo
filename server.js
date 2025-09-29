@@ -30,19 +30,21 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
   // Procesar fecha (usar actual si no se proporciona)
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
-  try {
-  // Solo guardar en Google Sheets
+ try {
   const result = await writeToSheet({
     variedad,
     bloque,
     tallos: tallosNum,
     tamali,
     fecha: fechaProcesada,
-    etapa // Aquí agregamos el campo 'etapa'
+    etapa
   });
 
+  // Si es para una app web
   return {
-    mensaje: '<h1 style="font-size: 2em; text-align: center;">Registro guardado en Google Sheets ✅</h1>'
+    success: true,
+    mensaje: 'Registro guardado en Google Sheets',
+    html: '<div style="font-size: 24px; font-weight: bold; color: green; text-align: center; padding: 20px; border: 2px solid green; background-color: #f0fff0;">✅ Registro guardado en Google Sheets</div>'
   };
 } catch (err) {
   console.error('❌ Error al guardar:', err);
