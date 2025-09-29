@@ -42,7 +42,7 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
     });
 
     return {
-      mensaje: 'Registro guardado en Google Sheets ✅'
+      mensaje: <h1>Registro guardado en Google Sheets ✅</h1>
     };
   } catch (err) {
     console.error('❌ Error al guardar:', err);
