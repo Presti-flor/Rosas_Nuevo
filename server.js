@@ -31,7 +31,7 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
   try {
-  // Solo guardar en Google Sheets
+  // Guardar en Google Sheets
   const result = await writeToSheet({
     variedad,
     bloque,
@@ -41,18 +41,23 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
     etapa
   });
 
-  return {
-    mensaje: `
-      <div style="text-align:center; margin-top:20px;">
-        <span style="font-size:32px; color:green; font-weight:bold;">
-          Registro guardado en Google Sheets ✅
-        </span>
-      </div>
-    `
-  };
+  // Enviar página de confirmación con título grande
+  res.send(`
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Registro exitoso</title>
+    </head>
+    <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
+      <h1 style="font-size:40px; color:green;">
+        ✅ Registro guardado en Google Sheets
+      </h1>
+    </body>
+    </html>
+  `);
 } catch (err) {
   console.error('❌ Error al guardar:', err);
-  throw new Error('Error al guardar en Google Sheets');
+  res.status(500).send('Hubo un error al guardar en Google Sheets.');
 }
 }
 
