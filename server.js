@@ -5,32 +5,39 @@ const app = express();
 app.use(express.json());
 
 // Lista de IPs autorizadas
-const authorizedIPs = ['186.102.77.146', '186.102.86.56', '186.102.55.56', '190.61.45.230', '192.168.10.23', '192.168.10.1', '186.102.62.30']; // Agrega las IPs de tus dispositivos autorizados
+const authorizedIPs = [
+  '186.102.77.146',
+  '186.102.86.56',
+  '186.102.55.56',
+  '190.61.45.230',
+  '192.168.10.23',
+  '192.168.10.1',
+  '186.102.62.30'
+];
 
 // Función para validar la IP del dispositivo
 function validateIP(req) {
-  const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;  // Obtener IP real si hay proxy
-  console.log("IP del cliente:", clientIP); // Para verificar la IP
+  const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  console.log("IP del cliente:", clientIP);
   return authorizedIPs.includes(clientIP);
 }
 
 // Función para procesar y guardar registros en Google Sheets
-async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa, res) {
+async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa) {
   // Validaciones
   if (!variedad || !bloque || !tallos || !tamali) {
-    return res.status(400).json({ mensaje: 'Faltan datos obligatorios: variedad, bloque, tallos, tamali' });
+    throw new Error('Faltan datos obligatorios: variedad, bloque, tallos, tamali');
   }
 
   // Convertir tallos a número
   const tallosNum = parseInt(tallos);
   if (isNaN(tallosNum)) {
-    return res.status(400).json({ mensaje: 'El parámetro tallos debe ser un número válido' });
+    throw new Error('El parámetro tallos debe ser un número válido');
   }
 
   // Procesar fecha (usar actual si no se proporciona)
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
-  try {
   // Guardar en Google Sheets
   const result = await writeToSheet({
     variedad,
@@ -41,65 +48,64 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
     etapa
   });
 
-  // Enviar página de confirmación con título grande
-  res.send(`
-    <html lang="es">
-    <head>
-      <meta charset="UTF-8">
-      <title>Registro exitoso</title>
-    </head>
-    <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
-      <h1 style="font-size:40px; color:green;">
-        ✅ Registro guardado en Google Sheets
-      </h1>
-    </body>
-    </html>
-  `);
-} catch (err) {
-  console.error('❌ Error al guardar:', err);
-  res.status(500).send('Hubo un error al guardar en Google Sheets.');
-}
+  return result; // ✅ Solo devuelve datos, no responde al cliente
 }
 
-// Endpoint POST para registrar datos solo en Google Sheets
+// ======================= ENDPOINT POST =======================
 app.post('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
     return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
   }
 
   try {
-    const { variedad, bloque, tallos, tamali, fecha, etapa } = req.body;  // Agregamos 'etapa'
-    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa, res);
-    res.json(result);
+    const { variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
+    await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa);
+
+    // ✅ Solo respondemos una vez
+    res.send(`
+      <html lang="es">
+      <head><meta charset="UTF-8"><title>Registro exitoso</title></head>
+      <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
+        <h1 style="font-size:40px; color:green;">✅ Registro guardado en Google Sheets</h1>
+      </body>
+      </html>
+    `);
   } catch (err) {
-    res.status(500).json({ mensaje: err.message });
+    res.status(400).json({ mensaje: err.message });
   }
 });
 
-// Nuevo endpoint GET para recibir parámetros por URL y registrar en Google Sheets
+// ======================= ENDPOINT GET =======================
 app.get('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
     return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
   }
 
-  const { variedad, bloque, tallos, tamali, fecha, etapa } = req.query;  // Agregamos 'etapa'
+  const { variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
 
-  // Validar parámetros requeridos
-  if (!variedad || !bloque || !tallos || !tamali || !etapa) {  // Verificamos si falta 'etapa'
+  if (!variedad || !bloque || !tallos || !tamali || !etapa) {
     return res.status(400).json({
       mensaje: 'Faltan parámetros requeridos en la URL. Ejemplo: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08&etapa=ingreso'
     });
   }
 
   try {
-    const result = await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa, res);
-    res.json(result);
+    await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa);
+
+    res.send(`
+      <html lang="es">
+      <head><meta charset="UTF-8"><title>Registro exitoso</title></head>
+      <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
+        <h1 style="font-size:40px; color:green;">✅ Registro guardado en Google Sheets</h1>
+      </body>
+      </html>
+    `);
   } catch (err) {
-    res.status(500).json({ mensaje: err.message });
+    res.status(400).json({ mensaje: err.message });
   }
 });
 
-// Ruta de ejemplo para prueba
+// ======================= HOME =======================
 app.get('/', (req, res) => {
   res.send(`
     <h1>Sistema de Registro de Flores</h1>
