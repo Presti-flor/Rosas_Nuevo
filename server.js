@@ -12,7 +12,8 @@ const authorizedIPs = [
   '190.61.45.230',
   '192.168.10.23',
   '192.168.10.1',
-  '186.102.62.30'
+  '186.102.62.30',
+  '186.102.25.201'
 ];
 
 // Función para validar la IP del dispositivo
