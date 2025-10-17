@@ -6,7 +6,7 @@ app.use(express.json());
 
 // Lista de IPs autorizadas
 const authorizedIPs = [
-  '186.102.51,69',
+  '186.102.51.69',
   '190.61.45.230',
   '192.168.10.23',
   '192.168.10.1',
