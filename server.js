@@ -95,7 +95,7 @@ app.get('/api/registrar', async (req, res) => {
       <html lang="es">
       <head><meta charset="UTF-8"><title>Registro exitoso</title></head>
       <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
-        <h1 style="font-size:40px; color:green;">✅ Registro guardado en Google Sheets</h1>
+        <h1 style="font-size:70px; color:green;">✅ Registro guardado en base de datos</h1>
       </body>
       </html>
     `);
