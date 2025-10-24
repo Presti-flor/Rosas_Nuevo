@@ -53,7 +53,7 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
 // ======================= ENDPOINT POST =======================
 app.post('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
-    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
+    return res.status(403).json({ mensaje: <h1 style="font-size:70px; color:green;"> Acceso denegado la IP no esta autorizada </h1> });
   }
 
   try {
@@ -75,49 +75,10 @@ app.post('/api/registrar', async (req, res) => {
 });
 
 // ======================= ENDPOINT GET =======================
-app.post('/api/registrar', async (req, res) => {
+app.get('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
-    // Enviar una respuesta HTML con texto grande y centrado
-    return res
-      .status(403)
-      .type('html')
-      .send(`
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Acceso denegado</title>
-            <style>
-              body {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                background-color: #111;
-                color: #ff4444;
-                font-family: Arial, sans-serif;
-                text-align: center;
-              }
-              h1 {
-                font-size: 48px;
-              }
-              p {
-                font-size: 20px;
-                color: #ccc;
-              }
-            </style>
-          </head>
-          <body>
-            <div>
-              <h1>🚫 Acceso denegado</h1>
-              <p>La IP no está autorizada</p>
-            </div>
-          </body>
-        </html>
-      `);
+    return res.status(403).json({ mensaje: <h1 style="font-size:70px; color:green;"> Acceso denegado la IP no esta autorizada </h1> });
   }
-
-  // ... tu código normal si la IP sí está autorizada
-
 
   const { variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
 
@@ -143,7 +104,7 @@ app.post('/api/registrar', async (req, res) => {
   }
 });
 
-// ======================= HOME ==============================
+// ======================= HOME =======================
 app.get('/', (req, res) => {
   res.send(`
     <h1>Sistema de Registro de Flores</h1>
