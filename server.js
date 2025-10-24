@@ -53,7 +53,7 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
 // ======================= ENDPOINT POST =======================
 app.post('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
-    return res.status(403).json({ mensaje: <h1 style="font-size:70px; color:green;"> Acceso denegado la IP no esta autorizada </h1> });
+    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
   }
 
   try {
@@ -77,7 +77,7 @@ app.post('/api/registrar', async (req, res) => {
 // ======================= ENDPOINT GET =======================
 app.get('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
-    return res.status(403).json({ mensaje: <h1 style="font-size:70px; color:green;"> Acceso denegado la IP no esta autorizada </h1> });
+    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
   }
 
   const { variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
@@ -104,7 +104,7 @@ app.get('/api/registrar', async (req, res) => {
   }
 });
 
-// =========================== HOME =======================
+// ======================= HOME =======================
 app.get('/', (req, res) => {
   res.send(`
     <h1>Sistema de Registro de Flores</h1>
