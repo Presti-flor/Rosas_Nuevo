@@ -143,7 +143,7 @@ app.post('/api/registrar', async (req, res) => {
   }
 });
 
-// ======================= HOME =======================
+// ======================= HOME ==============================
 app.get('/', (req, res) => {
   res.send(`
     <h1>Sistema de Registro de Flores</h1>
