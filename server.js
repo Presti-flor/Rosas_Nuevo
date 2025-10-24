@@ -14,26 +14,10 @@ const authorizedIPs = [
   '186.102.25.201'
 ];
 
-// —— Helpers de IP (mejor para Railway/Proxies) ——
-function normalizeIP(ip) {
-  if (!ip) return '';
-  // Si viene con múltiples IPs, toma la primera
-  if (ip.includes(',')) ip = ip.split(',')[0].trim();
-  // Quita prefijo IPv6 para IPv4 mapeado (::ffff:xxx.xxx.xxx.xxx)
-  if (ip.startsWith('::ffff:')) ip = ip.replace('::ffff:', '');
-  return ip;
-}
-
-function getClientIP(req) {
-  const hdr = req.headers['x-forwarded-for'] || '';
-  const fallback = req.connection?.remoteAddress || req.socket?.remoteAddress || '';
-  return normalizeIP(hdr || fallback);
-}
-
 // Función para validar la IP del dispositivo
 function validateIP(req) {
-  const clientIP = getClientIP(req);
-  console.log('IP del cliente:', clientIP);
+  const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  console.log("IP del cliente:", clientIP);
   return authorizedIPs.includes(clientIP);
 }
 
@@ -69,19 +53,47 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
 // ======================= ENDPOINT POST =======================
 app.post('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
-    // 👇 Mensaje grande (HTML) SOLO para acceso denegado
-    return res.status(403).send(`
-      <html lang="es">
-        <head><meta charset="UTF-8"><title>Acceso denegado</title></head>
-        <body style="font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f7f7f7; margin:0;">
-          <div style="text-align:center;">
-            <div style="font-size:56px; color:#d10000; font-weight:800; line-height:1.2; margin-bottom:12px;">🚫 Acceso denegado</div>
-            <div style="font-size:28px; color:#444;">La IP no está autorizada</div>
-          </div>
-        </body>
-      </html>
-    `);
+    // Enviar una respuesta HTML con texto grande y centrado
+    return res
+      .status(403)
+      .type('html')
+      .send(`
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Acceso denegado</title>
+            <style>
+              body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background-color: #111;
+                color: #ff4444;
+                font-family: Arial, sans-serif;
+                text-align: center;
+              }
+              h1 {
+                font-size: 48px;
+              }
+              p {
+                font-size: 20px;
+                color: #ccc;
+              }
+            </style>
+          </head>
+          <body>
+            <div>
+              <h1>🚫 Acceso denegado</h1>
+              <p>La IP no está autorizada</p>
+            </div>
+          </body>
+        </html>
+      `);
   }
+
+  // ... tu código normal si la IP sí está autorizada
+
 
   try {
     const { variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
@@ -104,18 +116,7 @@ app.post('/api/registrar', async (req, res) => {
 // ======================= ENDPOINT GET =======================
 app.get('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
-    // 👇 Mensaje grande (HTML) SOLO para acceso denegado
-    return res.status(403).send(`
-      <html lang="es">
-        <head><meta charset="UTF-8"><title>Acceso denegado</title></head>
-        <body style="font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f7f7f7; margin:0;">
-          <div style="text-align:center;">
-            <div style="font-size:56px; color:#d10000; font-weight:800; line-height:1.2; margin-bottom:12px;">🚫 Acceso denegado</div>
-            <div style="font-size:28px; color:#444;">La IP no está autorizada</div>
-          </div>
-        </body>
-      </html>
-    `);
+    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
   }
 
   const { variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
@@ -153,8 +154,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// En Railway suele ser process.env.PORT
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log('Servidor corriendo en http://localhost:' + PORT);
+app.listen(3000, () => {
+  console.log('Servidor corriendo en http://localhost:3000');
+  console.log('Prueba el registro con: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08&etapa=ingreso');
 });
