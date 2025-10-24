@@ -53,6 +53,30 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
 // ======================= ENDPOINT POST =======================
 app.post('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
+    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
+  }
+
+  try {
+    const { variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
+    await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa);
+
+    // ✅ Solo respondemos una vez
+    res.send(`
+      <html lang="es">
+      <head><meta charset="UTF-8"><title>Registro exitoso</title></head>
+      <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
+        <h1 style="font-size:40px; color:green;">✅ Registro guardado en Google Sheets</h1>
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    res.status(400).json({ mensaje: err.message });
+  }
+});
+
+// ======================= ENDPOINT GET =======================
+app.post('/api/registrar', async (req, res) => {
+  if (!validateIP(req)) {
     // Enviar una respuesta HTML con texto grande y centrado
     return res
       .status(403)
@@ -74,7 +98,7 @@ app.post('/api/registrar', async (req, res) => {
                 text-align: center;
               }
               h1 {
-                font-size: 50px;
+                font-size: 48px;
               }
               p {
                 font-size: 20px;
@@ -94,30 +118,6 @@ app.post('/api/registrar', async (req, res) => {
 
   // ... tu código normal si la IP sí está autorizada
 
-
-  try {
-    const { variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
-    await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa);
-
-    // ✅ Solo respondemos una vez
-    res.send(`
-      <html lang="es">
-      <head><meta charset="UTF-8"><title>Registro exitoso</title></head>
-      <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
-        <h1 style="font-size:40px; color:green;">✅ Registro guardado en Google Sheets</h1>
-      </body>
-      </html>
-    `);
-  } catch (err) {
-    res.status(400).json({ mensaje: err.message });
-  }
-});
-
-// ======================= ENDPOINT GET =======================
-app.get('/api/registrar', async (req, res) => {
-  if (!validateIP(req)) {
-    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
-  }
 
   const { variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
 
