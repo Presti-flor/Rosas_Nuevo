@@ -74,7 +74,7 @@ app.post('/api/registrar', async (req, res) => {
                 text-align: center;
               }
               h1 {
-                font-size: 48px;
+                font-size: 50px;
               }
               p {
                 font-size: 20px;
