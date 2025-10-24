@@ -77,7 +77,7 @@ app.post('/api/registrar', async (req, res) => {
 // ======================= ENDPOINT GET ========================
 app.get('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
-    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
+    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizadaa' });
   }
 
   const { variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
