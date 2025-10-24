@@ -53,8 +53,21 @@ async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa
 // ======================= ENDPOINT POST =======================
 app.post('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
-    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
+    return res.status(403).send(`
+      <html>
+        <body style="font-family: Arial; text-align: center; padding-top: 100px; background-color: #f4f4f4;">
+          <h1 style="color: red; font-size: 65px;">
+            🚫 Acceso denegado
+          </h1>
+          <p style="font-size: 65px;">
+            La IP no está autorizada para acceder a este recurso.
+          </p>
+        </body>
+      </html>
+    `);
   }
+
+  // .
 
   try {
     const { variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
