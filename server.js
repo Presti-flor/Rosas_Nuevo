@@ -74,7 +74,7 @@ app.post('/api/registrar', async (req, res) => {
   }
 });
 
-// ======================= ENDPOINT GET =======================
+// ======================= ENDPOINT GET ========================
 app.get('/api/registrar', async (req, res) => {
   if (!validateIP(req)) {
     return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
