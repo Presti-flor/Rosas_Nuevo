@@ -1,13 +1,24 @@
-// google-sheets.js
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
 const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';
 const SHEET_NAME = 'Hoja111';
 
-// abrir la hoja (reutilizable)
-async function getSheetFromEnv() {
-  const creds = JSON.parse(process.env.google_sheets_credentials);
+function getCredsFromEnv() {
+  const raw = process.env.google_sheets_credentials;
+  if (!raw) {
+    throw new Error('ENV google_sheets_credentials no está definida en Railway');
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('❌ No pude parsear google_sheets_credentials:', raw);
+    throw e;
+  }
+}
+
+async function getSheet() {
+  const creds = getCredsFromEnv();
 
   const serviceAccountAuth = new JWT({
     email: creds.client_email,
@@ -29,21 +40,27 @@ async function getSheetFromEnv() {
   return sheet;
 }
 
-// 🔍 buscar por id (para evitar doble escaneo)
+// 🔍 versión con logs
 async function findById(idBuscado) {
-  const sheet = await getSheetFromEnv();
-  const rows = await sheet.getRows();
+  const sheet = await getSheet();
+  const rows = await sheet.getRows(); // 👈 si esto se vuelve lento habrá que paginar
 
-  const row = rows.find(r => String(r.id) === String(idBuscado));
-  return !!row;
+  const idNormalizado = String(idBuscado).trim();
+
+  const existe = rows.some((r) => {
+    const valor = String(r.id || '').trim();
+    return valor === idNormalizado;
+  });
+
+  console.log(`🔍 findById("${idNormalizado}") => ${existe}`);
+  return existe;
 }
 
-// 📝 escribir una fila
 async function writeToSheet(data) {
-  const sheet = await getSheetFromEnv();
+  const sheet = await getSheet();
 
-  await sheet.addRow({
-    id: data.id || new Date().getTime(), // por si acaso no viene
+  const row = {
+    id: data.id || new Date().getTime(),
     variedad: data.variedad,
     bloque: data.bloque,
     tallos: data.tallos,
@@ -51,9 +68,10 @@ async function writeToSheet(data) {
     fecha: data.fecha || new Date().toLocaleDateString('es-ES'),
     etapa: data.etapa || '',
     creado_iso: new Date().toISOString(),
-  });
+  };
 
-  console.log('✅ Datos agregados correctamente en Google Sheets');
+  await sheet.addRow(row);
+  console.log('✅ Datos agregados en Sheets:', row);
 }
 
 module.exports = {

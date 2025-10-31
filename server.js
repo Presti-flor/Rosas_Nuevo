@@ -1,65 +1,77 @@
-const { GoogleSpreadsheet } = require('google-spreadsheet');
-const { JWT } = require('google-auth-library');
+const express = require('express');
+const { writeToSheet, findById } = require('./google-sheets');
+const app = express();
 
-const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';
-const SHEET_NAME = 'Hoja111';
+app.use(express.json());
 
-async function getSheet() {
-  const creds = JSON.parse(process.env.google_sheets_credentials);
+const authorizedIPs = [
+  '186.102.47.124',
+  '186.102.51.69',
+  '190.61.45.230',
+  '192.168.10.23',
+  '192.168.10.1',
+  '186.102.62.30',
+  '186.102.25.201'
+];
 
-  const serviceAccountAuth = new JWT({
-    email: creds.client_email,
-    key: creds.private_key.replace(/\\n/g, '\n'),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
+function validateIP(req) {
+  const raw = req.headers['x-forwarded-for'] || req.connection.remoteAddress || '';
+  const clientIP = raw.split(',')[0].trim();
+  console.log('IP del cliente (normalizada):', clientIP);
+  return authorizedIPs.includes(clientIP);
+}
 
-  const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
-  await doc.loadInfo();
-
-  let sheet = doc.sheetsByTitle[SHEET_NAME];
-  if (!sheet) {
-    sheet = await doc.addSheet({
-      title: SHEET_NAME,
-      headerValues: ['id', 'variedad', 'bloque', 'tallos', 'tamali', 'fecha', 'etapa', 'creado_iso'],
-    });
+async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
+  if (!id) throw new Error('Falta el parámetro id');
+  if (!variedad || !bloque || !tallos || !tamali) {
+    throw new Error('Faltan datos obligatorios: variedad, bloque, tallos, tamali');
   }
 
-  return sheet;
-}
+  const yaExiste = await findById(id);
+  if (yaExiste) {
+    throw new Error(`El ID ${id} ya fue registrado anteriormente (doble escaneo).`);
+  }
 
-// 🔍 Buscar si el id ya existe
-async function findById(idBuscado) {
-  const sheet = await getSheet();
-  const rows = await sheet.getRows();
+  const tallosNum = parseInt(tallos);
+  if (isNaN(tallosNum)) {
+    throw new Error('El parámetro tallos debe ser numérico');
+  }
 
-  const existe = rows.some((r) => {
-    const valor = String(r.id || '').trim();
-    return valor === String(idBuscado).trim();
+  const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
+
+  await writeToSheet({
+    id,
+    variedad,
+    bloque,
+    tallos: tallosNum,
+    tamali,
+    fecha: fechaProcesada,
+    etapa
   });
-
-  console.log(`🔍 Buscando id=${idBuscado} → ${existe ? 'ENCONTRADO' : 'NO encontrado'}`);
-  return existe;
 }
 
-// 📝 Escribir datos
-async function writeToSheet(data) {
-  const sheet = await getSheet();
+app.get('/api/registrar', async (req, res) => {
+  try {
+    if (!validateIP(req)) {
+      return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
+    }
 
-  await sheet.addRow({
-    id: data.id || new Date().getTime(),
-    variedad: data.variedad,
-    bloque: data.bloque,
-    tallos: data.tallos,
-    tamali: data.tamali,
-    fecha: data.fecha || new Date().toLocaleDateString('es-ES'),
-    etapa: data.etapa || '',
-    creado_iso: new Date().toISOString(),
-  });
+    const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
 
-  console.log(`✅ Registro insertado → id=${data.id}`);
-}
+    if (!id || !variedad || !bloque || !tallos || !tamali || !etapa) {
+      return res.status(400).json({ mensaje: 'Faltan parámetros en la URL' });
+    }
 
-module.exports = {
-  writeToSheet,
-  findById,
-};
+    await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa });
+
+    res.send('<h1 style="color:green">✅ Registro guardado</h1>');
+  } catch (err) {
+    console.error('❌ Error en /api/registrar:', err.message);
+    // devolver SIEMPRE algo para que Railway no haga 502
+    res.status(400).json({ mensaje: err.message });
+  }
+});
+
+app.listen(3000, () => {
+  console.log('Servidor corriendo en http://localhost:3000');
+});
