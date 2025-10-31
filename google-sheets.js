@@ -1,80 +1,59 @@
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
-const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';
-const SHEET_NAME = 'Hoja111';
+// Cambiar la forma de obtener las credenciales
+async function writeToSheet(data) {
+  // Obtener las credenciales desde la variable de entorno
+  console.log(process.env.google_sheets_credentials);
+  const creds = JSON.parse(process.env.google_sheets_credentials); // Parseamos la cadena JSON
 
-function getCredsFromEnv() {
-  const raw = process.env.google_sheets_credentials;
-  if (!raw) {
-    throw new Error('ENV google_sheets_credentials no está definida en Railway');
-  }
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error('❌ No pude parsear google_sheets_credentials:', raw);
-    throw e;
-  }
-}
+  const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';  // Reemplaza con tu ID de hoja
+  const SHEET_NAME = 'Hoja111';  // Reemplaza con el nombre de tu hoja en Google Sheets
 
-async function getSheet() {
-  const creds = getCredsFromEnv();
-
+  // Configurar autenticación JWT correctamente
   const serviceAccountAuth = new JWT({
     email: creds.client_email,
-    key: creds.private_key.replace(/\\n/g, '\n'),
+    key: creds.private_key.replace(/\\n/g, '\n'),  // Asegura que los saltos de línea en la clave sean correctos
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 
+  // Crear la instancia del documento de Google Sheets
   const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
-  await doc.loadInfo();
 
-  let sheet = doc.sheetsByTitle[SHEET_NAME];
-  if (!sheet) {
-    sheet = await doc.addSheet({
-      title: SHEET_NAME,
-      headerValues: ['id', 'variedad', 'bloque', 'tallos', 'tamali', 'fecha', 'etapa', 'creado_iso']
-    });
+  try {
+    // Cargar la información de la hoja
+    await doc.loadInfo();
+
+    // Obtener la hoja por título
+    let sheet = doc.sheetsByTitle[SHEET_NAME];
+
+    // Si no existe la hoja, crearla
+    if (!sheet) {
+      sheet = await doc.addSheet({
+        title: SHEET_NAME,
+        headerValues: ['Unique ID', 'variedad', 'bloque', 'tallos', 'tamali', 'fecha', 'etapa'] // Agregar columna Unique ID
+      });
+    }
+
+    // Crear el objeto con los datos que se insertarán en la hoja
+    const rowData = {
+      // Generar un ID único para cada entrada, puedes usar la fecha, un hash o lo que desees
+      'Unique ID': new Date().getTime(),  // Aquí estamos usando el timestamp como Unique ID (puedes cambiar esto)
+      'variedad': data.variedad,
+      'bloque': data.bloque,
+      'tallos': data.tallos,
+      'tamali': data.tamali,
+      'fecha': data.fecha || new Date().toLocaleDateString('es-ES'),  // Si no se pasa la fecha, toma la actual
+      'etapa': data.etapa
+    };
+
+    // Agregar la fila a la hoja de cálculo
+    await sheet.addRow(rowData);
+    console.log('✅ Datos agregados correctamente en Google Sheets');
+  } catch (error) {
+    console.error('❌ Error al interactuar con Google Sheets:', error);
+    throw new Error(`Error al escribir en Google Sheets: ${error.message}`);
   }
-
-  return sheet;
 }
 
-// 🔍 versión con logs
-async function findById(idBuscado) {
-  const sheet = await getSheet();
-  const rows = await sheet.getRows(); // 👈 si esto se vuelve lento habrá que paginar
-
-  const idNormalizado = String(idBuscado).trim();
-
-  const existe = rows.some((r) => {
-    const valor = String(r.id || '').trim();
-    return valor === idNormalizado;
-  });
-
-  console.log(`🔍 findById("${idNormalizado}") => ${existe}`);
-  return existe;
-}
-
-async function writeToSheet(data) {
-  const sheet = await getSheet();
-
-  const row = {
-    id: data.id || new Date().getTime(),
-    variedad: data.variedad,
-    bloque: data.bloque,
-    tallos: data.tallos,
-    tamali: data.tamali,
-    fecha: data.fecha || new Date().toLocaleDateString('es-ES'),
-    etapa: data.etapa || '',
-    creado_iso: new Date().toISOString(),
-  };
-
-  await sheet.addRow(row);
-  console.log('✅ Datos agregados en Sheets:', row);
-}
-
-module.exports = {
-  writeToSheet,
-  findById,
-};
+module.exports = writeToSheet;
