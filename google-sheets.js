@@ -38,65 +38,79 @@ async function getSheet() {
   return sheet;
 }
 
-// 3) Normalizar ID (para que "0004" y "4" sean iguales si son numéricos)
-function normalizeId(value) {
-  const s = (value ?? '').toString().trim();
-  if (s === '') return '';
-  if (/^\d+$/.test(s)) {
-    return String(parseInt(s, 10)); // "0004" -> "4"
-  }
-  return s; // si tiene letras, se queda igual
+// normalizar string
+function norm(v) {
+  return (v ?? '').toString().trim();
 }
 
-// 4) Buscar por ID leyendo SIEMPRE la columna A (id)
-async function findById(idBuscado) {
+// construir la "llave" del registro:
+// si TODAS estas cosas son iguales → es el mismo QR
+function buildKey({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
+  return [
+    norm(id),
+    norm(variedad),
+    norm(bloque),
+    norm(tallos),
+    norm(tamali),
+    norm(fecha),
+    norm(etapa),
+  ].join('|');
+}
+
+// 🔍 ¿Existe ya un registro con EXACTAMENTE la misma combinación?
+async function existsSameRecord(data) {
   const sheet = await getSheet();
-  const headers = sheet.headerValues || [];
   const rows = await sheet.getRows();
 
-  const buscadoNorm = normalizeId(idBuscado);
+  const targetKey = buildKey(data);
 
-  // la columna "id" es la A → índice 0
-  // pero por si acaso, buscamos su índice en headers
-  let idIndex = headers.findIndex(h =>
-    (h || '').toString().trim().toLowerCase() === 'id'
-  );
-  if (idIndex === -1) {
-    // si no lo encuentra, asumimos A = 0
-    idIndex = 0;
-  }
-
-  console.log('📑 Encabezados:', headers);
-  console.log('📌 Índice de columna ID:', idIndex);
-  console.log(`🔍 Buscando id="${idBuscado}" (normalizado="${buscadoNorm}") en ${rows.length} filas`);
+  console.log(`🔍 Buscando combinación: ${targetKey}`);
+  console.log(`📊 Filas totales: ${rows.length}`);
 
   let encontrado = false;
 
   for (const row of rows) {
-    const rawRow = row._rawData || [];
-    const cellVal = rawRow[idIndex]; // 👈 valor crudo de la columna A
-    const valNorm = normalizeId(cellVal);
+    const raw = row._rawData || [];
+    const rowData = {
+      id: raw[0],        // A: id
+      variedad: raw[1],  // B
+      bloque: raw[2],    // C
+      tallos: raw[3],    // D
+      tamali: raw[4],    // E
+      fecha: raw[5],     // F
+      etapa: raw[6],     // G
+    };
 
-    if (valNorm === buscadoNorm) {
+    const rowKey = buildKey(rowData);
+
+    if (rowKey === targetKey) {
       encontrado = true;
       break;
     }
   }
 
-  // Para ayudar a depurar, mostramos los últimos 3 IDs que ve
+  // para debug: últimas 2 combinaciones vistas
   const total = rows.length;
-  const start = Math.max(0, total - 3);
-  const ultimos = rows.slice(start).map(r => {
-    const raw = (r._rawData || [])[idIndex];
-    return normalizeId(raw);
+  const start = Math.max(0, total - 2);
+  const ultimas = rows.slice(start).map(r => {
+    const raw = r._rawData || [];
+    return buildKey({
+      id: raw[0],
+      variedad: raw[1],
+      bloque: raw[2],
+      tallos: raw[3],
+      tamali: raw[4],
+      fecha: raw[5],
+      etapa: raw[6],
+    });
   });
-  console.log('📜 Últimos IDs vistos en la columna A:', ultimos);
+  console.log('📜 Últimas combinaciones en hoja:', ultimas);
+  console.log(`🔍 existsSameRecord → ${encontrado}`);
 
-  console.log(`🔍 findById("${idBuscado}") → ${encontrado}`);
   return encontrado;
 }
 
-// 5) Escribir fila normalmente
+// 📝 Escribir fila
 async function writeToSheet(data) {
   const sheet = await getSheet();
 
@@ -117,5 +131,5 @@ async function writeToSheet(data) {
 
 module.exports = {
   writeToSheet,
-  findById,
+  existsSameRecord,
 };

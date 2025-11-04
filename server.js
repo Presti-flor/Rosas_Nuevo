@@ -1,9 +1,10 @@
 const express = require('express');
-const { writeToSheet, findById } = require('./google-sheets');
+const { writeToSheet, existsSameRecord } = require('./google-sheets');
 const app = express();
 
 app.use(express.json());
 
+// IPs autorizadas
 const authorizedIPs = [
   '186.102.47.124',
   '186.102.51.69',
@@ -27,17 +28,29 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     throw new Error('Faltan datos obligatorios: variedad, bloque, tallos, tamali');
   }
 
-  const yaExiste = await findById(id);
+  // normalizamos fecha igual que al guardar
+  const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
+
+  // 👇 ahora el bloqueo es por combinación COMPLETA
+  const yaExiste = await existsSameRecord({
+    id,
+    variedad,
+    bloque,
+    tallos,
+    tamali,
+    fecha: fechaProcesada,
+    etapa,
+  });
+
   if (yaExiste) {
-    throw new Error(`El ID ${id} ya fue registrado antes (doble escaneo).`);
+    throw new Error('Este código QR ya fue registrado con la misma información (doble escaneo).');
   }
 
+  // validación de tallos
   const tallosNum = parseInt(tallos);
   if (isNaN(tallosNum)) {
     throw new Error('El parámetro tallos debe ser un número válido');
   }
-
-  const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
   await writeToSheet({
     id,
@@ -50,6 +63,7 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
   });
 }
 
+// GET (para QR)
 app.get('/api/registrar', async (req, res) => {
   try {
     if (!validateIP(req)) {
@@ -69,6 +83,32 @@ app.get('/api/registrar', async (req, res) => {
     console.error('❌ Error en /api/registrar:', err.message);
     res.status(400).json({ mensaje: err.message });
   }
+});
+
+// opcional POST
+app.post('/api/registrar', async (req, res) => {
+  try {
+    if (!validateIP(req)) {
+      return res.status(403).json({ mensaje: 'Acceso denegado: IP no autorizada' });
+    }
+
+    const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
+
+    await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa });
+
+    res.json({ mensaje: '✅ Registro guardado' });
+  } catch (err) {
+    console.error('❌ Error en POST /api/registrar:', err.message);
+    res.status(400).json({ mensaje: err.message });
+  }
+});
+
+app.get('/', (req, res) => {
+  res.send(`
+    <h2>Sistema de Registro de Flores</h2>
+    <p>Ejemplo:</p>
+    <code>/api/registrar?id=0004&variedad=Freedom&bloque=6&tallos=20&tamali=Largo&etapa=corte</code>
+  `);
 });
 
 app.listen(3000, () => {
