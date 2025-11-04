@@ -4,7 +4,7 @@ const { JWT } = require('google-auth-library');
 const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';
 const SHEET_NAME = 'prueba';
 
-// Credenciales desde ENV (Railway)
+// 1) Credenciales desde ENV (Railway)
 function getCreds() {
   const raw = process.env.google_sheets_credentials;
   if (!raw) {
@@ -13,7 +13,7 @@ function getCreds() {
   return JSON.parse(raw);
 }
 
-// Conectar con la hoja
+// 2) Conectar con la hoja
 async function getSheet() {
   const creds = getCreds();
 
@@ -38,19 +38,17 @@ async function getSheet() {
   return sheet;
 }
 
-// 🔧 Normalizar ID (para que "0004" y "4" sean lo mismo si son números)
+// 3) Normalizar ID (para que "0004" y "4" sean iguales si son numéricos)
 function normalizeId(value) {
   const s = (value ?? '').toString().trim();
   if (s === '') return '';
-  // si son solo dígitos, comparamos como número
   if (/^\d+$/.test(s)) {
-    return String(parseInt(s, 10)); // "0004" -> 4 -> "4"
+    return String(parseInt(s, 10)); // "0004" -> "4"
   }
-  // si tiene letras, lo dejamos tal cual
-  return s;
+  return s; // si tiene letras, se queda igual
 }
 
-// 🔍 Buscar por ID usando encabezados reales y normalización
+// 4) Buscar por ID leyendo SIEMPRE la columna A (id)
 async function findById(idBuscado) {
   const sheet = await getSheet();
   const headers = sheet.headerValues || [];
@@ -58,40 +56,52 @@ async function findById(idBuscado) {
 
   const buscadoNorm = normalizeId(idBuscado);
 
-  const columnasId = headers.filter(h =>
-    (h || '').toString().trim().toLowerCase().includes('id')
+  // la columna "id" es la A → índice 0
+  // pero por si acaso, buscamos su índice en headers
+  let idIndex = headers.findIndex(h =>
+    (h || '').toString().trim().toLowerCase() === 'id'
   );
+  if (idIndex === -1) {
+    // si no lo encuentra, asumimos A = 0
+    idIndex = 0;
+  }
 
   console.log('📑 Encabezados:', headers);
-  console.log('📌 Columnas consideradas como ID:', columnasId);
+  console.log('📌 Índice de columna ID:', idIndex);
   console.log(`🔍 Buscando id="${idBuscado}" (normalizado="${buscadoNorm}") en ${rows.length} filas`);
 
   let encontrado = false;
 
   for (const row of rows) {
-    for (const col of columnasId) {
-      const val = row[col];
-      const valNorm = normalizeId(val);
-      // log opcional: descomenta si quieres ver qué ve
-      // console.log(`   ↳ fila: raw="${val}", norm="${valNorm}"`);
-      if (valNorm === buscadoNorm) {
-        encontrado = true;
-        break;
-      }
+    const rawRow = row._rawData || [];
+    const cellVal = rawRow[idIndex]; // 👈 valor crudo de la columna A
+    const valNorm = normalizeId(cellVal);
+
+    if (valNorm === buscadoNorm) {
+      encontrado = true;
+      break;
     }
-    if (encontrado) break;
   }
+
+  // Para ayudar a depurar, mostramos los últimos 3 IDs que ve
+  const total = rows.length;
+  const start = Math.max(0, total - 3);
+  const ultimos = rows.slice(start).map(r => {
+    const raw = (r._rawData || [])[idIndex];
+    return normalizeId(raw);
+  });
+  console.log('📜 Últimos IDs vistos en la columna A:', ultimos);
 
   console.log(`🔍 findById("${idBuscado}") → ${encontrado}`);
   return encontrado;
 }
 
-// 📝 Escribir fila
+// 5) Escribir fila normalmente
 async function writeToSheet(data) {
   const sheet = await getSheet();
 
   const row = {
-    id: data.id || new Date().getTime(),      // aquí le mandas "0004"
+    id: data.id || new Date().getTime(),
     variedad: data.variedad,
     bloque: data.bloque,
     tallos: data.tallos,
