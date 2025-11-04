@@ -13,10 +13,10 @@ async function testGoogleSheets() {
   const doc = new GoogleSpreadsheet('1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0', serviceAccountAuth);
   await doc.loadInfo();
 
-  let sheet = doc.sheetsByTitle['Hoja111'];
+  let sheet = doc.sheetsByTitle['prueba'];
   if (!sheet) {
     sheet = await doc.addSheet({
-      title: 'Hoja111',
+      title: 'prueba',
       headerValues: ['id', 'variedad', 'bloque', 'tallos', 'tamali', 'fecha', 'etapa', 'creado_iso'],
     });
   }
