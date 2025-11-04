@@ -1,5 +1,5 @@
 const express = require('express');
-const writeToSheet = require('./google-sheets'); // Función para escribir en Google Sheets
+const { writeToSheet, findById } = require('./google-sheets');
 const app = express();
 
 app.use(express.json());
@@ -15,108 +15,85 @@ const authorizedIPs = [
   '186.102.25.201'
 ];
 
-// Función para validar la IP del dispositivo
+// Normaliza IPs que vienen con proxy (Railway)
 function validateIP(req) {
-  const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  console.log("IP del cliente:", clientIP);
+  const raw = req.headers['x-forwarded-for'] || req.connection.remoteAddress || '';
+  const clientIP = raw.split(',')[0].trim();
+  console.log('📡 IP del cliente:', clientIP);
   return authorizedIPs.includes(clientIP);
 }
 
-// Función para procesar y guardar registros en Google Sheets
-async function processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa) {
-  // Validaciones
+// Función principal que procesa y guarda
+async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
+  if (!id) throw new Error('Falta el parámetro id');
   if (!variedad || !bloque || !tallos || !tamali) {
     throw new Error('Faltan datos obligatorios: variedad, bloque, tallos, tamali');
   }
 
-  // Convertir tallos a número
-  const tallosNum = parseInt(tallos);
-  if (isNaN(tallosNum)) {
-    throw new Error('El parámetro tallos debe ser un número válido');
-  }
+  // Verificar duplicado
+  const yaExiste = await findById(id);
+  if (yaExiste) throw new Error(`El ID ${id} ya fue registrado antes (doble escaneo)`);
 
-  // Procesar fecha (usar actual si no se proporciona)
+  const tallosNum = parseInt(tallos);
+  if (isNaN(tallosNum)) throw new Error('El parámetro tallos debe ser un número válido');
+
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
-  // Guardar en Google Sheets
-  const result = await writeToSheet({
+  await writeToSheet({
+    id,
     variedad,
     bloque,
     tallos: tallosNum,
     tamali,
     fecha: fechaProcesada,
-    etapa
+    etapa,
   });
-
-  return result; // ✅ Solo devuelve datos, no responde al cliente
 }
 
-// ======================= ENDPOINT POST =======================
-app.post('/api/registrar', async (req, res) => {
-  if (!validateIP(req)) {
-    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizada' });
-  }
-
-  try {
-    const { variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
-    await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa);
-
-    // ✅ Solo respondemos una vez
-    res.send(`
-      <html lang="es">
-      <head><meta charset="UTF-8"><title>Registro exitoso</title></head>
-      <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
-        <h1 style="font-size:40px; color:green;">✅ Registro guardado en Google Sheets</h1>
-      </body>
-      </html>
-    `);
-  } catch (err) {
-    res.status(400).json({ mensaje: err.message });
-  }
-});
-
-// ======================= ENDPOINT GET ========================
+// GET (para QR)
 app.get('/api/registrar', async (req, res) => {
-  if (!validateIP(req)) {
-    return res.status(403).json({ mensaje: 'Acceso denegado: la IP no está autorizadaa' });
-  }
-
-  const { variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
-
-  if (!variedad || !bloque || !tallos || !tamali || !etapa) {
-    return res.status(400).json({
-      mensaje: 'Faltan parámetros requeridos en la URL. Ejemplo: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08&etapa=ingreso'
-    });
-  }
-
   try {
-    await processAndSaveData(variedad, bloque, tallos, tamali, fecha, etapa);
+    if (!validateIP(req)) {
+      return res.status(403).json({ mensaje: 'Acceso denegado: IP no autorizada' });
+    }
 
-    res.send(`
-      <html lang="es">
-      <head><meta charset="UTF-8"><title>Registro exitoso</title></head>
-      <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
-        <h1 style="font-size:70px; color:green;">✅ Registro guardado en base de datos</h1>
-      </body>
-      </html>
-    `);
+    const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
+
+    if (!id || !variedad || !bloque || !tallos || !tamali) {
+      return res.status(400).json({ mensaje: 'Faltan parámetros en la URL' });
+    }
+
+    await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa });
+
+    res.send('<h1 style="color:green;text-align:center">✅ Registro guardado</h1>');
+  } catch (err) {
+    console.error('❌ Error en /api/registrar:', err.message);
+    res.status(400).json({ mensaje: err.message });
+  }
+});
+
+// POST (por si más adelante mandas desde app)
+app.post('/api/registrar', async (req, res) => {
+  try {
+    if (!validateIP(req)) {
+      return res.status(403).json({ mensaje: 'Acceso denegado: IP no autorizada' });
+    }
+
+    const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
+    await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa });
+
+    res.json({ mensaje: '✅ Registro guardado' });
   } catch (err) {
     res.status(400).json({ mensaje: err.message });
   }
 });
 
-// ======================= HOME =======================
 app.get('/', (req, res) => {
   res.send(`
-    <h1>Sistema de Registro de Flores</h1>
-    <p>Ejemplo de URL para registro:</p>
-    <code>
-      http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08&etapa=ingreso
-    </code>
+    <h2>Sistema de Registro de Flores</h2>
+    <p>Ejemplo:</p>
+    <code>/api/registrar?id=0001&variedad=Freedom&bloque=6&tallos=20&tamali=Largo&etapa=corte</code>
   `);
 });
 
-app.listen(3000, () => {
-  console.log('Servidor corriendo en http://localhost:3000');
-  console.log('Prueba el registro con: http://localhost:3000/api/registrar?variedad=Rosa&bloque=5&tallos=30&tamali=Mediano&fecha=2025-09-08&etapa=ingreso');
-});
+app.listen(3000, () => console.log('🚀 Servidor activo en http://localhost:3000'));
