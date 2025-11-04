@@ -4,7 +4,6 @@ const app = express();
 
 app.use(express.json());
 
-// IPs autorizadas
 const authorizedIPs = [
   '186.102.47.124',
   '186.102.51.69',
@@ -28,30 +27,29 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     throw new Error('Faltan datos obligatorios: variedad, bloque, tallos, tamali');
   }
 
-  // normalizamos fecha igual que al guardar
+  const tallosNum = parseInt(tallos);
+  if (isNaN(tallosNum)) {
+    throw new Error('El parámetro tallos debe ser un número válido');
+  }
+
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
-  // 👇 ahora el bloqueo es por combinación COMPLETA
+  // 👇 Bloqueo: SOLO si existe una fila con todos estos campos iguales
   const yaExiste = await existsSameRecord({
     id,
     variedad,
     bloque,
-    tallos,
+    tallos: tallosNum,
     tamali,
     fecha: fechaProcesada,
     etapa,
   });
 
   if (yaExiste) {
-    throw new Error('Este código QR ya fue registrado con la misma información (doble escaneo).');
+    throw new Error('Este código QR con estos datos ya fue registrado (doble escaneo).');
   }
 
-  // validación de tallos
-  const tallosNum = parseInt(tallos);
-  if (isNaN(tallosNum)) {
-    throw new Error('El parámetro tallos debe ser un número válido');
-  }
-
+  // ✅ Si NO existe, se agrega una fila nueva
   await writeToSheet({
     id,
     variedad,
@@ -63,7 +61,7 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
   });
 }
 
-// GET (para QR)
+// GET (QR)
 app.get('/api/registrar', async (req, res) => {
   try {
     if (!validateIP(req)) {
@@ -85,7 +83,7 @@ app.get('/api/registrar', async (req, res) => {
   }
 });
 
-// opcional POST
+// POST (opcional)
 app.post('/api/registrar', async (req, res) => {
   try {
     if (!validateIP(req)) {
@@ -93,7 +91,6 @@ app.post('/api/registrar', async (req, res) => {
     }
 
     const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
-
     await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa });
 
     res.json({ mensaje: '✅ Registro guardado' });
@@ -107,7 +104,7 @@ app.get('/', (req, res) => {
   res.send(`
     <h2>Sistema de Registro de Flores</h2>
     <p>Ejemplo:</p>
-    <code>/api/registrar?id=0004&variedad=Freedom&bloque=6&tallos=20&tamali=Largo&etapa=corte</code>
+    <code>/api/registrar?id=1&variedad=Freedom&bloque=6&tallos=20&tamali=Largo&etapa=corte</code>
   `);
 });
 

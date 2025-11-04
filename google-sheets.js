@@ -2,7 +2,7 @@ const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
 const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';
-const SHEET_NAME = 'prueba';
+const SHEET_NAME = 'Hoja111';
 
 // 1) Credenciales desde ENV (Railway)
 function getCreds() {
@@ -38,13 +38,13 @@ async function getSheet() {
   return sheet;
 }
 
-// normalizar string
+// normalizar para comparar
 function norm(v) {
   return (v ?? '').toString().trim();
 }
 
-// construir la "llave" del registro:
-// si TODAS estas cosas son iguales → es el mismo QR
+// construir la “llave” del registro
+// si esta llave ya existe en una fila → es el mismo QR
 function buildKey({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
   return [
     norm(id),
@@ -89,9 +89,9 @@ async function existsSameRecord(data) {
     }
   }
 
-  // para debug: últimas 2 combinaciones vistas
+  // debug: últimas combinaciones
   const total = rows.length;
-  const start = Math.max(0, total - 2);
+  const start = Math.max(0, total - 3);
   const ultimas = rows.slice(start).map(r => {
     const raw = r._rawData || [];
     return buildKey({
@@ -110,7 +110,7 @@ async function existsSameRecord(data) {
   return encontrado;
 }
 
-// 📝 Escribir fila
+// 📝 Siempre agrega fila nueva (no borra ni actualiza)
 async function writeToSheet(data) {
   const sheet = await getSheet();
 
