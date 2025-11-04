@@ -2,7 +2,7 @@ const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
 async function testGoogleSheets() {
-  const creds = require('./credentials.json'); // para entorno local
+  const creds = require('./credentials.json'); // solo local
 
   const serviceAccountAuth = new JWT({
     email: creds.client_email,
@@ -21,13 +21,22 @@ async function testGoogleSheets() {
     });
   }
 
+  await sheet.loadHeaderRow();
+  const headers = sheet.headerValues;
+  console.log('📑 Encabezados actuales:', headers);
+
   const testId = 'TEST-0001';
   const rows = await sheet.getRows();
 
-  const existe = rows.some((r) => {
-    const keys = Object.keys(r).filter(k => !k.startsWith('_'));
-    return keys.some(k => (r[k] ?? '').toString().trim() === testId);
-  });
+  const columnasId = headers.filter(h =>
+    (h || '').toString().trim().toLowerCase().includes('id')
+  );
+
+  console.log('📌 Columnas consideradas como ID:', columnasId);
+
+  const existe = rows.some(r =>
+    columnasId.some(col => (r[col] ?? '').toString().trim() === testId)
+  );
 
   if (existe) {
     console.log(`⚠️ El ID ${testId} ya existe, no se inserta`);

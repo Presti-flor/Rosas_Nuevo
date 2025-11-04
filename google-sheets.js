@@ -4,14 +4,16 @@ const { JWT } = require('google-auth-library');
 const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';
 const SHEET_NAME = 'Hoja111';
 
-// 1️⃣ Obtener credenciales desde Railway o local
+// Credenciales desde ENV (Railway)
 function getCreds() {
   const raw = process.env.google_sheets_credentials;
-  if (!raw) throw new Error('⚠️ ENV google_sheets_credentials no está definida');
+  if (!raw) {
+    throw new Error('⚠️ ENV google_sheets_credentials no está definida');
+  }
   return JSON.parse(raw);
 }
 
-// 2️⃣ Conectar con la hoja
+// Obtener hoja
 async function getSheet() {
   const creds = getCreds();
 
@@ -32,43 +34,46 @@ async function getSheet() {
     });
   }
 
+  // nos aseguramos de tener los encabezados cargados
+  await sheet.loadHeaderRow();
   return sheet;
 }
 
-// 3️⃣ Extraer el valor del ID (sin depender del nombre exacto)
-function extractIdFromRow(row) {
-  const keys = Object.keys(row).filter(k => !k.startsWith('_'));
-  for (const key of keys) {
-    const kNorm = key.trim().toLowerCase();
-    if (kNorm.includes('id')) {
-      const val = (row[key] ?? '').toString().trim();
-      if (val) return val;
-    }
-  }
-  return '';
-}
-
-// 4️⃣ Buscar por ID (para evitar reescaneos)
+// 🔍 Buscar por ID usando los encabezados reales
 async function findById(idBuscado) {
   const sheet = await getSheet();
+  const headers = sheet.headerValues || [];
   const rows = await sheet.getRows();
 
   const buscado = String(idBuscado).trim();
-  let found = false;
 
-  for (const r of rows) {
-    const idRow = extractIdFromRow(r);
-    if (idRow === buscado) {
-      found = true;
-      break;
+  // columnas que parecen ser de ID (contienen "id")
+  const columnasId = headers.filter(h =>
+    (h || '').toString().trim().toLowerCase().includes('id')
+  );
+
+  console.log('📑 Encabezados:', headers);
+  console.log('📌 Columnas consideradas como ID:', columnasId);
+  console.log(`🔍 Buscando id="${buscado}" en ${rows.length} filas`);
+
+  let encontrado = false;
+
+  for (const row of rows) {
+    for (const col of columnasId) {
+      const val = (row[col] ?? '').toString().trim();
+      if (val === buscado) {
+        encontrado = true;
+        break;
+      }
     }
+    if (encontrado) break;
   }
 
-  console.log(`🔍 findById("${buscado}") → ${found}`);
-  return found;
+  console.log(`🔍 findById("${buscado}") → ${encontrado}`);
+  return encontrado;
 }
 
-// 5️⃣ Escribir en la hoja
+// 📝 Escribir fila
 async function writeToSheet(data) {
   const sheet = await getSheet();
 
@@ -87,4 +92,7 @@ async function writeToSheet(data) {
   console.log('✅ fila escrita en Sheets:', row);
 }
 
-module.exports = { writeToSheet, findById };
+module.exports = {
+  writeToSheet,
+  findById,
+};

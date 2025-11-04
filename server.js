@@ -4,7 +4,6 @@ const app = express();
 
 app.use(express.json());
 
-// Lista de IPs autorizadas
 const authorizedIPs = [
   '186.102.47.124',
   '186.102.51.69',
@@ -15,7 +14,7 @@ const authorizedIPs = [
   '186.102.25.201'
 ];
 
-// Normaliza IPs que vienen con proxy (Railway)
+// Normaliza IP (Railway mete varias separadas por coma)
 function validateIP(req) {
   const raw = req.headers['x-forwarded-for'] || req.connection.remoteAddress || '';
   const clientIP = raw.split(',')[0].trim();
@@ -23,22 +22,26 @@ function validateIP(req) {
   return authorizedIPs.includes(clientIP);
 }
 
-// Función principal que procesa y guarda
 async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
   if (!id) throw new Error('Falta el parámetro id');
   if (!variedad || !bloque || !tallos || !tamali) {
     throw new Error('Faltan datos obligatorios: variedad, bloque, tallos, tamali');
   }
 
-  // Verificar duplicado
+  // 1. revisar si ya existe ese ID
   const yaExiste = await findById(id);
-  if (yaExiste) throw new Error(`El ID ${id} ya fue registrado antes (doble escaneo)`);
+  if (yaExiste) {
+    throw new Error(`El ID ${id} ya fue registrado antes (doble escaneo).`);
+  }
 
   const tallosNum = parseInt(tallos);
-  if (isNaN(tallosNum)) throw new Error('El parámetro tallos debe ser un número válido');
+  if (isNaN(tallosNum)) {
+    throw new Error('El parámetro tallos debe ser un número válido');
+  }
 
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
+  // 2. escribir
   await writeToSheet({
     id,
     variedad,
@@ -50,7 +53,7 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
   });
 }
 
-// GET (para QR)
+// GET (QR)
 app.get('/api/registrar', async (req, res) => {
   try {
     if (!validateIP(req)) {
@@ -72,7 +75,7 @@ app.get('/api/registrar', async (req, res) => {
   }
 });
 
-// POST (por si más adelante mandas desde app)
+// POST (por si luego lo usas desde app o script)
 app.post('/api/registrar', async (req, res) => {
   try {
     if (!validateIP(req)) {
@@ -80,10 +83,12 @@ app.post('/api/registrar', async (req, res) => {
     }
 
     const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
+
     await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa });
 
     res.json({ mensaje: '✅ Registro guardado' });
   } catch (err) {
+    console.error('❌ Error en POST /api/registrar:', err.message);
     res.status(400).json({ mensaje: err.message });
   }
 });
@@ -92,8 +97,10 @@ app.get('/', (req, res) => {
   res.send(`
     <h2>Sistema de Registro de Flores</h2>
     <p>Ejemplo:</p>
-    <code>/api/registrar?id=0001&variedad=Freedom&bloque=6&tallos=20&tamali=Largo&etapa=corte</code>
+    <code>/api/registrar?id=0004&variedad=Freedom&bloque=6&tallos=20&tamali=Largo&etapa=corte</code>
   `);
 });
 
-app.listen(3000, () => console.log('🚀 Servidor activo en http://localhost:3000'));
+app.listen(3000, () => {
+  console.log('🚀 Servidor activo en http://localhost:3000');
+});
