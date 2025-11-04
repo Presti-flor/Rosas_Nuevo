@@ -14,7 +14,6 @@ const authorizedIPs = [
   '186.102.25.201'
 ];
 
-// Normaliza IP (Railway mete varias separadas por coma)
 function validateIP(req) {
   const raw = req.headers['x-forwarded-for'] || req.connection.remoteAddress || '';
   const clientIP = raw.split(',')[0].trim();
@@ -28,7 +27,6 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     throw new Error('Faltan datos obligatorios: variedad, bloque, tallos, tamali');
   }
 
-  // 1. revisar si ya existe ese ID
   const yaExiste = await findById(id);
   if (yaExiste) {
     throw new Error(`El ID ${id} ya fue registrado antes (doble escaneo).`);
@@ -41,7 +39,6 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
 
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
-  // 2. escribir
   await writeToSheet({
     id,
     variedad,
@@ -53,7 +50,6 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
   });
 }
 
-// GET (QR)
 app.get('/api/registrar', async (req, res) => {
   try {
     if (!validateIP(req)) {
@@ -73,32 +69,6 @@ app.get('/api/registrar', async (req, res) => {
     console.error('❌ Error en /api/registrar:', err.message);
     res.status(400).json({ mensaje: err.message });
   }
-});
-
-// POST (por si luego lo usas desde app o script)
-app.post('/api/registrar', async (req, res) => {
-  try {
-    if (!validateIP(req)) {
-      return res.status(403).json({ mensaje: 'Acceso denegado: IP no autorizada' });
-    }
-
-    const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
-
-    await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa });
-
-    res.json({ mensaje: '✅ Registro guardado' });
-  } catch (err) {
-    console.error('❌ Error en POST /api/registrar:', err.message);
-    res.status(400).json({ mensaje: err.message });
-  }
-});
-
-app.get('/', (req, res) => {
-  res.send(`
-    <h2>Sistema de Registro de Flores</h2>
-    <p>Ejemplo:</p>
-    <code>/api/registrar?id=0004&variedad=Freedom&bloque=6&tallos=20&tamali=Largo&etapa=corte</code>
-  `);
 });
 
 app.listen(3000, () => {

@@ -13,7 +13,7 @@ function getCreds() {
   return JSON.parse(raw);
 }
 
-// Obtener hoja
+// Conectar con la hoja
 async function getSheet() {
   const creds = getCreds();
 
@@ -34,34 +34,47 @@ async function getSheet() {
     });
   }
 
-  // nos aseguramos de tener los encabezados cargados
   await sheet.loadHeaderRow();
   return sheet;
 }
 
-// 🔍 Buscar por ID usando los encabezados reales
+// 🔧 Normalizar ID (para que "0004" y "4" sean lo mismo si son números)
+function normalizeId(value) {
+  const s = (value ?? '').toString().trim();
+  if (s === '') return '';
+  // si son solo dígitos, comparamos como número
+  if (/^\d+$/.test(s)) {
+    return String(parseInt(s, 10)); // "0004" -> 4 -> "4"
+  }
+  // si tiene letras, lo dejamos tal cual
+  return s;
+}
+
+// 🔍 Buscar por ID usando encabezados reales y normalización
 async function findById(idBuscado) {
   const sheet = await getSheet();
   const headers = sheet.headerValues || [];
   const rows = await sheet.getRows();
 
-  const buscado = String(idBuscado).trim();
+  const buscadoNorm = normalizeId(idBuscado);
 
-  // columnas que parecen ser de ID (contienen "id")
   const columnasId = headers.filter(h =>
     (h || '').toString().trim().toLowerCase().includes('id')
   );
 
   console.log('📑 Encabezados:', headers);
   console.log('📌 Columnas consideradas como ID:', columnasId);
-  console.log(`🔍 Buscando id="${buscado}" en ${rows.length} filas`);
+  console.log(`🔍 Buscando id="${idBuscado}" (normalizado="${buscadoNorm}") en ${rows.length} filas`);
 
   let encontrado = false;
 
   for (const row of rows) {
     for (const col of columnasId) {
-      const val = (row[col] ?? '').toString().trim();
-      if (val === buscado) {
+      const val = row[col];
+      const valNorm = normalizeId(val);
+      // log opcional: descomenta si quieres ver qué ve
+      // console.log(`   ↳ fila: raw="${val}", norm="${valNorm}"`);
+      if (valNorm === buscadoNorm) {
         encontrado = true;
         break;
       }
@@ -69,7 +82,7 @@ async function findById(idBuscado) {
     if (encontrado) break;
   }
 
-  console.log(`🔍 findById("${buscado}") → ${encontrado}`);
+  console.log(`🔍 findById("${idBuscado}") → ${encontrado}`);
   return encontrado;
 }
 
@@ -78,7 +91,7 @@ async function writeToSheet(data) {
   const sheet = await getSheet();
 
   const row = {
-    id: data.id || new Date().getTime(),
+    id: data.id || new Date().getTime(),      // aquí le mandas "0004"
     variedad: data.variedad,
     bloque: data.bloque,
     tallos: data.tallos,
