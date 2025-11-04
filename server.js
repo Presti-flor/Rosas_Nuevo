@@ -105,7 +105,7 @@ app.get('/api/registrar', async (req, res) => {
         font-family:sans-serif;
         text-align:center;
         margin-top:80px;
-        background-color:#0f172a;
+        background-color:#ffffff;
         color:white;
       ">
         <h1 style="font-size:80px; color:#22c55e; margin-bottom:20px;">
@@ -154,7 +154,7 @@ app.get('/api/registrar', async (req, res) => {
           <button
             onclick="window.location.href='${newUrl}'"
             style="
-              margin-top:40px;
+              margin-top:80px;
               padding:20px 40px;
               font-size:28px;
               background-color:#22c55e;
