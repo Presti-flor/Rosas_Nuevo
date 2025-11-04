@@ -2,7 +2,7 @@ const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
 const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';
-const SHEET_NAME = 'Hoja111';
+const SHEET_NAME = 'prueba';
 
 // 1) Credenciales desde ENV (Railway)
 function getCreds() {
