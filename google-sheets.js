@@ -48,7 +48,7 @@ let cache = {
 };
 
 // cuánto tiempo consideramos válida la caché (ms)
-const CACHE_TTL_MS = 15000; // 15 segundos
+const CACHE_TTL_MS = 120000; // 2 minutos
 
 function norm(v) {
   return (v ?? '').toString().trim();
