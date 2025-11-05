@@ -38,13 +38,23 @@ async function getSheet() {
   return sheet;
 }
 
-// normalizar para comparar
+// ----------- CACHÉ EN MEMORIA PARA NO LEER SIEMPRE --------------
+
+// guardamos las filas y sus “claves” ya calculadas
+let cache = {
+  rows: [],        // array de rows de google-sheets
+  keys: new Set(), // conjunto de llaves buildKey(...)
+  loadedAt: 0      // timestamp (ms)
+};
+
+// cuánto tiempo consideramos válida la caché (ms)
+const CACHE_TTL_MS = 15000; // 15 segundos
+
 function norm(v) {
   return (v ?? '').toString().trim();
 }
 
-// construir la “llave” del registro
-// si esta llave ya existe en una fila → es el mismo QR
+// llave única de un registro
 function buildKey({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
   return [
     norm(id),
@@ -57,39 +67,53 @@ function buildKey({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
   ].join('|');
 }
 
-// 🔍 ¿Existe ya un registro con EXACTAMENTE la misma combinación?
-async function existsSameRecord(data) {
-  const sheet = await getSheet();
-  const rows = await sheet.getRows();
+// cargar o reutilizar cache
+async function getCachedRowsAndKeys() {
+  const now = Date.now();
 
-  const targetKey = buildKey(data);
-
-  console.log(`🔍 Buscando combinación: ${targetKey}`);
-  console.log(`📊 Filas totales: ${rows.length}`);
-
-  let encontrado = false;
-
-  for (const row of rows) {
-    const raw = row._rawData || [];
-    const rowData = {
-      id: raw[0],        // A: id
-      variedad: raw[1],  // B
-      bloque: raw[2],    // C
-      tallos: raw[3],    // D
-      tamali: raw[4],    // E
-      fecha: raw[5],     // F
-      etapa: raw[6],     // G
-    };
-
-    const rowKey = buildKey(rowData);
-
-    if (rowKey === targetKey) {
-      encontrado = true;
-      break;
-    }
+  // si la caché está reciente, la reutilizamos
+  if (cache.rows.length > 0 && now - cache.loadedAt < CACHE_TTL_MS) {
+    console.log('⚡ Usando datos en caché (sin leer de Sheets)');
+    return cache;
   }
 
-  // debug: últimas combinaciones
+  const sheet = await getSheet();
+  const rows = await sheet.getRows();
+  const keys = new Set();
+
+  for (const r of rows) {
+    const raw = r._rawData || [];
+    const rowData = {
+      id: raw[0],
+      variedad: raw[1],
+      bloque: raw[2],
+      tallos: raw[3],
+      tamali: raw[4],
+      fecha: raw[5],
+      etapa: raw[6],
+    };
+    keys.add(buildKey(rowData));
+  }
+
+  cache = {
+    rows,
+    keys,
+    loadedAt: now,
+  };
+
+  console.log(`📖 Leídos ${rows.length} registros de Google Sheets (actualizando caché)`);
+  return cache;
+}
+
+// 🔍 ¿Existe ya un registro con EXACTAMENTE la misma combinación?
+async function existsSameRecord(data) {
+  const targetKey = buildKey(data);
+
+  const { keys, rows } = await getCachedRowsAndKeys();
+
+  const encontrado = keys.has(targetKey);
+
+  // debug para ver las últimas combinaciones
   const total = rows.length;
   const start = Math.max(0, total - 3);
   const ultimas = rows.slice(start).map(r => {
@@ -104,8 +128,9 @@ async function existsSameRecord(data) {
       etapa: raw[6],
     });
   });
+
   console.log('📜 Últimas combinaciones en hoja:', ultimas);
-  console.log(`🔍 existsSameRecord → ${encontrado}`);
+  console.log(`🔍 existsSameRecord(${targetKey}) → ${encontrado}`);
 
   return encontrado;
 }
@@ -114,7 +139,7 @@ async function existsSameRecord(data) {
 async function writeToSheet(data) {
   const sheet = await getSheet();
 
-  const row = {
+  const rowObj = {
     id: data.id || new Date().getTime(),
     variedad: data.variedad,
     bloque: data.bloque,
@@ -125,8 +150,15 @@ async function writeToSheet(data) {
     creado_iso: new Date().toISOString(),
   };
 
-  await sheet.addRow(row);
-  console.log('✅ fila escrita en Sheets:', row);
+  const newRow = await sheet.addRow(rowObj);
+  console.log('✅ fila escrita en Sheets:', rowObj);
+
+  // actualizamos la caché si ya estaba cargada
+  if (cache.rows.length > 0) {
+    cache.rows.push(newRow);
+    cache.keys.add(buildKey(rowObj));
+    // no tocamos loadedAt para que siga vigente
+  }
 }
 
 module.exports = {
