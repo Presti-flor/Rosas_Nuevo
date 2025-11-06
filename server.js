@@ -156,11 +156,11 @@ app.get('/api/registrar', async (req, res) => {
             style="
               margin-top:80px;
               padding:20px 80px;
-              font-size:70px;
+              font-size:55px;
               background-color:#22c55e;
               color:white;
               border:none;
-              border-radius:10px;
+              border-radius:30px;
               cursor:pointer;
             ">
             ✅ Registrar de todas formas
