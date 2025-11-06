@@ -108,7 +108,7 @@ app.get('/api/registrar', async (req, res) => {
         background-color:#ffffff;
         color:white;
       ">
-        <h1 style="font-size:80px; color:#22c55e; margin-bottom:20px;">
+        <h1 style="font-size:100px; color:#22c55e; margin-top:50px; margin-bottom:20px;">
           ✅ REGISTRO GUARDADO
         </h1>
         <p style="font-size:32px; opacity:0.9;">
