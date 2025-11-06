@@ -108,7 +108,7 @@ app.get('/api/registrar', async (req, res) => {
         background-color:#ffffff;
         color:white;
       ">
-        <h1 style="font-size:100px; color:#22c55e; margin-top:50px; margin-bottom:20px;">
+        <h1 style="font-size:100px; color:#22c55e; margin-top:200px; margin-bottom:20px;">
           ✅ REGISTRO GUARDADO
         </h1>
         <p style="font-size:32px; opacity:0.9;">
@@ -143,7 +143,7 @@ app.get('/api/registrar', async (req, res) => {
           background-color:#b9deff;
           color:white;
         ">
-          <h1 style="font-size:72px; color:#f97316; margin-bottom:20px;">
+          <h1 style="font-size:72px; color:#f41606; margin-bottom:20px;">
             ⚠️ ESTE CÓDIGO YA FUE ESCANEADO
           </h1>
           <p style="font-size:30px; opacity:0.9;">
@@ -156,7 +156,7 @@ app.get('/api/registrar', async (req, res) => {
             style="
               margin-top:80px;
               padding:20px 80px;
-              font-size:40px;
+              font-size:70px;
               background-color:#22c55e;
               color:white;
               border:none;
