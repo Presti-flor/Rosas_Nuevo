@@ -140,7 +140,7 @@ app.get('/api/registrar', async (req, res) => {
           font-family:sans-serif;
           text-align:center;
           margin-top:80px;
-          background-color:#ffffff;
+          background-color:#b9deff;
           color:white;
         ">
           <h1 style="font-size:72px; color:#f97316; margin-bottom:20px;">
