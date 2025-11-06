@@ -160,7 +160,7 @@ app.get('/api/registrar', async (req, res) => {
               background-color:#22c55e;
               color:white;
               border:none;
-              border-radius:30px;
+              border-radius:31px;
               cursor:pointer;
             ">
             ✅ Registrar de todas formas
