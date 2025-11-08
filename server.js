@@ -1,6 +1,42 @@
 const express = require('express');
-const { writeToSheet, existsSameRecord } = require('./google-sheets');
+const express = require("express");
+const { Pool } = require("pg");
+
 const app = express();
+
+// Conexión usando DATABASE_URL de Railway
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }, // muchos servicios lo necesitan
+});
+const { writeToSheet, existsSameRecord } = require('./google-sheets');
+
+app.get("/api/registrar", async (req, res) => {
+  try {
+    const { id, variedad, bloque, tallos, tamali } = req.query;
+
+    // Validaciones básicas
+    if (!id || !variedad || !bloque) {
+      return res.status(400).json({ ok: false, error: "Faltan datos clave" });
+    }
+
+    await pool.query(
+      `INSERT INTO registros (id, variedad, bloque, tallos, tamali)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO UPDATE SET
+         variedad = EXCLUDED.variedad,
+         bloque = EXCLUDED.bloque,
+         tallos = EXCLUDED.tallos,
+         tamali = EXCLUDED.tamali`,
+      [id, variedad, bloque, tallos, tamali]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Error en /api/registrar:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 app.use(express.json());
 
