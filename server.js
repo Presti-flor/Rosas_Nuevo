@@ -1,81 +1,92 @@
-
 const express = require("express");
 const { Pool } = require("pg");
+const { writeToSheet, existsSameRecord } = require("./google-sheets");
 
 const app = express();
+
+// Middleware global
+app.use(express.json());
 
 // Conexión usando DATABASE_URL de Railway
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }, // muchos servicios lo necesitan
 });
-const { writeToSheet, existsSameRecord } = require('./google-sheets');
-
-app.get("/api/registrar", async (req, res) => {
-  try {
-    const { id, variedad, bloque, tallos, tamali } = req.query;
-
-    // Validaciones básicas
-    if (!id || !variedad || !bloque) {
-      return res.status(400).json({ ok: false, error: "Faltan datos clave" });
-    }
-
-    await pool.query(
-      `INSERT INTO registros (id, variedad, bloque, tallos, tamali)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (id) DO UPDATE SET
-         variedad = EXCLUDED.variedad,
-         bloque = EXCLUDED.bloque,
-         tallos = EXCLUDED.tallos,
-         tamali = EXCLUDED.tamali`,
-      [id, variedad, bloque, tallos, tamali]
-    );
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("Error en /api/registrar:", err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-app.use(express.json());
 
 // Lista de IPs autorizadas
 const authorizedIPs = [
-  '181.78.78.61',
-  '186.102.115.133',
-  '186.102.47.124',
-  '186.102.51.69',
-  '190.61.45.230',
-  '192.168.10.23',
-  '192.168.10.1',
-  '186.102.62.30',
-  '186.102.25.201'
+  "181.78.78.61",
+  "186.102.115.133",
+  "186.102.47.124",
+  "186.102.51.69",
+  "190.61.45.230",
+  "192.168.10.23",
+  "192.168.10.1",
+  "186.102.62.30",
+  "186.102.25.201",
 ];
 
-// Normaliza IP (Railway mete varias separadas por coma)
+// Normaliza IP (Railway/metaproxy pueden meter varias, IPv6, etc.)
 function validateIP(req) {
-  const raw = req.headers['x-forwarded-for'] || req.connection.remoteAddress || '';
-  const clientIP = raw.split(',')[0].trim();
-  console.log('📡 IP del cliente:', clientIP);
+  const raw =
+    req.headers["x-forwarded-for"] ||
+    req.connection.remoteAddress ||
+    "";
+  // Si viene "ip1, ip2, ip3" nos quedamos con la primera
+  let clientIP = raw.split(",")[0].trim();
+
+  // Quitar prefijo IPv6 tipo "::ffff:"
+  if (clientIP.startsWith("::ffff:")) {
+    clientIP = clientIP.replace("::ffff:", "");
+  }
+
+  console.log("📡 IP del cliente:", clientIP);
   return authorizedIPs.includes(clientIP);
 }
 
-// Lógica principal
-async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa, force }) {
-  if (!id) throw new Error('Falta el parámetro id');
+// Guarda/actualiza también en PostgreSQL
+async function saveToPostgres({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
+  await pool.query(
+    `INSERT INTO registros (id, variedad, bloque, tallos, tamali, fecha, etapa)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (id) DO UPDATE SET
+       variedad = EXCLUDED.variedad,
+       bloque = EXCLUDED.bloque,
+       tallos = EXCLUDED.tallos,
+       tamali = EXCLUDED.tamali,
+       fecha = EXCLUDED.fecha,
+       etapa = EXCLUDED.etapa`,
+    [id, variedad, bloque, tallos, tamali, fecha, etapa]
+  );
+}
+
+// Lógica principal compartida GET/POST
+async function processAndSaveData({
+  id,
+  variedad,
+  bloque,
+  tallos,
+  tamali,
+  fecha,
+  etapa,
+  force,
+}) {
+  if (!id) throw new Error("Falta el parámetro id");
   if (!variedad || !bloque || !tallos || !tamali) {
-    throw new Error('Faltan datos obligatorios: variedad, bloque, tallos, tamali');
+    throw new Error(
+      "Faltan datos obligatorios: variedad, bloque, tallos, tamali"
+    );
   }
 
-  const tallosNum = parseInt(tallos);
+  const tallosNum = parseInt(tallos, 10);
   if (isNaN(tallosNum)) {
-    throw new Error('El parámetro tallos debe ser un número válido');
+    throw new Error("El parámetro tallos debe ser un número válido");
   }
 
-  const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
+  const fechaProcesada =
+    fecha || new Date().toISOString().slice(0, 10); // yyyy-mm-dd
 
-  // ⚠️ solo verificamos duplicado si NO viene force=true
+  // Solo verificamos duplicado si NO viene force=true
   if (!force) {
     const yaExiste = await existsSameRecord({
       id,
@@ -88,12 +99,15 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     });
 
     if (yaExiste) {
-      const err = new Error('Este código QR con estos datos ya fue registrado (doble escaneo).');
-      err.code = 'DUPLICATE';
+      const err = new Error(
+        "Este código QR con estos datos ya fue registrado (doble escaneo)."
+      );
+      err.code = "DUPLICATE";
       throw err;
     }
   }
 
+  // 1) Escribir en Google Sheets
   await writeToSheet({
     id,
     variedad,
@@ -103,10 +117,19 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     fecha: fechaProcesada,
     etapa,
   });
+
+  // 2) Guardar/actualizar en PostgreSQL
+  await saveToPostgres({
+    id,
+    variedad,
+    bloque,
+    tallos: tallosNum,
+    tamali,
+  });
 }
 
-// GET (para el QR)
-app.get('/api/registrar', async (req, res) => {
+// GET (para lectura desde QR en navegador)
+app.get("/api/registrar", async (req, res) => {
   try {
     if (!validateIP(req)) {
       return res.status(403).send(`
@@ -119,8 +142,9 @@ app.get('/api/registrar', async (req, res) => {
       `);
     }
 
-    const { id, variedad, bloque, tallos, tamali, fecha, etapa, force } = req.query;
-    const forceFlag = force === 'true' || force === '1';
+    const { id, variedad, bloque, tallos, tamali, fecha, etapa, force } =
+      req.query;
+    const forceFlag = force === "true" || force === "1";
 
     if (!id || !variedad || !bloque || !tallos || !tamali) {
       return res.status(400).send(`
@@ -133,7 +157,16 @@ app.get('/api/registrar', async (req, res) => {
       `);
     }
 
-    await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa, force: forceFlag });
+    await processAndSaveData({
+      id,
+      variedad,
+      bloque,
+      tallos,
+      tamali,
+      fecha,
+      etapa,
+      force: forceFlag,
+    });
 
     // ✅ MENSAJE DE REGISTRO OK
     res.send(`
@@ -158,17 +191,17 @@ app.get('/api/registrar', async (req, res) => {
       </html>
     `);
   } catch (err) {
-    console.error('❌ Error en /api/registrar:', err.message);
+    console.error("❌ Error en GET /api/registrar:", err.message);
 
     const esDoble =
-      err.code === 'DUPLICATE' ||
-      err.message.includes('doble escaneo') ||
-      err.message.includes('ya fue registrado');
+      err.code === "DUPLICATE" ||
+      err.message.includes("doble escaneo") ||
+      err.message.includes("ya fue registrado");
 
     if (esDoble) {
       const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
       const currentUrl = req.originalUrl;
-      const separator = currentUrl.includes('?') ? '&' : '?';
+      const separator = currentUrl.includes("?") ? "&" : "?";
       const newUrl = `${currentUrl}${separator}force=true`;
 
       return res.status(400).send(`
@@ -231,26 +264,39 @@ app.get('/api/registrar', async (req, res) => {
   }
 });
 
-// POST (opcional)
-app.post('/api/registrar', async (req, res) => {
+// POST (para integraciones tipo Apps Script, backends, etc.)
+app.post("/api/registrar", async (req, res) => {
   try {
     if (!validateIP(req)) {
-      return res.status(403).json({ mensaje: 'Acceso denegado: IP no autorizada' });
+      return res
+        .status(403)
+        .json({ mensaje: "Acceso denegado: IP no autorizada" });
     }
 
-    const { id, variedad, bloque, tallos, tamali, fecha, etapa, force } = req.body;
-    const forceFlag = force === true || force === 'true' || force === 1 || force === '1';
+    const { id, variedad, bloque, tallos, tamali, fecha, etapa, force } =
+      req.body;
+    const forceFlag =
+      force === true || force === "true" || force === 1 || force === "1";
 
-    await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa, force: forceFlag });
+    await processAndSaveData({
+      id,
+      variedad,
+      bloque,
+      tallos,
+      tamali,
+      fecha,
+      etapa,
+      force: forceFlag,
+    });
 
-    res.json({ mensaje: '✅ Registro guardado' });
+    res.json({ mensaje: "✅ Registro guardado" });
   } catch (err) {
-    console.error('❌ Error en POST /api/registrar:', err.message);
+    console.error("❌ Error en POST /api/registrar:", err.message);
     res.status(400).json({ mensaje: err.message });
   }
 });
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.send(`
     <h2>Sistema de Registro de Flores</h2>
     <p>Ejemplo:</p>
@@ -258,6 +304,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-app.listen(3000, () => {
-  console.log('🚀 Servidor activo en http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("🚀 Servidor activo en puerto " + PORT);
 });
