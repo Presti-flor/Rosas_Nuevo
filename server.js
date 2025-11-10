@@ -35,17 +35,10 @@ function validateIP(req) {
 // 👉 Guarda también en PostgreSQL
 async function saveToPostgres({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
   await pool.query(
-    `INSERT INTO registros (id, variedad, bloque, tallos, tamali, fecha, etapa)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (id) DO UPDATE SET
-       variedad = EXCLUDED.variedad,
-       bloque   = EXCLUDED.bloque,
-       tallos   = EXCLUDED.tallos,
-       tamali   = EXCLUDED.tamali,
-       fecha    = EXCLUDED.fecha,
-       etapa    = EXCLUDED.etapa`,
-    [id, variedad, bloque, tallos, tamali, fecha, etapa]
-  );
+  `INSERT INTO registros (id, variedad, bloque, tallos, tamali, fecha, etapa)
+   VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+  [id, variedad, bloque, tallos, tamali, fecha, etapa]
+);
 
   console.log(`💾 Guardado en PostgreSQL: id=${id}, variedad=${variedad}, bloque=${bloque}`);
 }
