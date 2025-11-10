@@ -1,6 +1,12 @@
-const express = require('express');
-const { writeToSheet, existsSameRecord } = require('./google-sheets');
+const express = require("express");
+const { Pool } = require("pg");
+
 const app = express();
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }, // en Railway casi siempre hace falta
+});
 
 app.use(express.json());
 
@@ -221,7 +227,7 @@ app.get('/', (req, res) => {
     <code>/api/registrar?id=1&variedad=Freedom&bloque=6&tallos=20&tamali=Largo&etapa=corte</code>
   `);
 });
-
-app.listen(3000, () => {
-  console.log('🚀 Servidor activo en http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("🚀 Servidor activo en puerto " + PORT);
 });
