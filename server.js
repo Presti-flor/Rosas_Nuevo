@@ -76,7 +76,7 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     }
   }
 
-  // 1) Guardar en Google Sheets
+  // 1️⃣ Guardar en Google Sheets (hoja del día)
   await writeToSheet({
     id,
     variedad,
@@ -87,7 +87,7 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     etapa,
   });
 
-  // 2) Guardar en PostgreSQL
+  // 2️⃣ Guardar en PostgreSQL (base histórica)
   await saveToPostgres({
     id,
     variedad,
@@ -98,6 +98,17 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     etapa,
   });
 }
+
+// ✅ NUEVO: Exportar todo el histórico desde PostgreSQL
+app.get("/api/exportar", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM registros ORDER BY fecha DESC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Error al exportar datos:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET (para el QR)
 app.get("/api/registrar", async (req, res) => {
