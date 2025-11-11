@@ -1,19 +1,20 @@
 const express = require("express");
 const { Pool } = require("pg");
-const { writeToSheet, existsSameRecord } = require("./google-sheets"); // 👈 importante
+const { writeToSheet, existsSameRecord } = require("./google-sheets"); // archivo con funciones para Google Sheets
 
 const app = express();
 
+// 🔗 Conexión a PostgreSQL (Railway)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // en Railway casi siempre hace falta
+  ssl: { rejectUnauthorized: false },
 });
 
 app.use(express.json());
 
-// Lista de IPs autorizadas
+// 🌐 Lista de IPs autorizadas
 const authorizedIPs = [
-  "190.60.35.50",
+  "190.60.35.50", // nueva IP agregada
   "181.78.78.61",
   "186.102.115.133",
   "186.102.47.124",
@@ -25,7 +26,7 @@ const authorizedIPs = [
   "186.102.25.201",
 ];
 
-// Normaliza IP (Railway mete varias separadas por coma)
+// 🧩 Validar IP del cliente
 function validateIP(req) {
   const raw = req.headers["x-forwarded-for"] || req.connection.remoteAddress || "";
   const clientIP = raw.split(",")[0].trim();
@@ -33,7 +34,7 @@ function validateIP(req) {
   return authorizedIPs.includes(clientIP);
 }
 
-// 👉 Guarda también en PostgreSQL
+// 💾 Guardar registro en PostgreSQL
 async function saveToPostgres({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
   await pool.query(
     `INSERT INTO registros (id, variedad, bloque, tallos, tamali, fecha, etapa)
@@ -47,25 +48,21 @@ async function saveToPostgres({ id, variedad, bloque, tallos, tamali, fecha, eta
        etapa    = EXCLUDED.etapa`,
     [id, variedad, bloque, tallos, tamali, fecha, etapa]
   );
-
-  console.log(`💾 Guardado en PostgreSQL: id=${id}, variedad=${variedad}, bloque=${bloque}`);
+  console.log(`💾 Guardado en PostgreSQL → ID: ${id}, Variedad: ${variedad}`);
 }
 
-// Lógica principal: valida + evita doble escaneo + guarda en Sheets + guarda en DB
+// 🌺 Lógica principal: valida, evita duplicados, guarda en Sheets + DB
 async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa, force }) {
   if (!id) throw new Error("Falta el parámetro id");
-  if (!variedad || !bloque || !tallos || !tamali) {
+  if (!variedad || !bloque || !tallos || !tamali)
     throw new Error("Faltan datos obligatorios: variedad, bloque, tallos, tamali");
-  }
 
   const tallosNum = parseInt(tallos);
-  if (isNaN(tallosNum)) {
-    throw new Error("El parámetro tallos debe ser un número válido");
-  }
+  if (isNaN(tallosNum)) throw new Error("El parámetro tallos debe ser un número válido");
 
   const fechaProcesada = fecha || new Date().toISOString().slice(0, 10);
 
-  // ⚠️ Solo verificamos duplicado si NO viene force=true
+  // Evita duplicado, excepto si force = true
   if (!force) {
     const yaExiste = await existsSameRecord({
       id,
@@ -78,13 +75,13 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     });
 
     if (yaExiste) {
-      const err = new Error("Este código QR con estos datos ya fue registrado (doble escaneo).");
+      const err = new Error("Este código QR ya fue registrado (doble escaneo).");
       err.code = "DUPLICATE";
       throw err;
     }
   }
 
-  // 1) Guardar en Google Sheets
+  // 1️⃣ Guardar en Google Sheets
   await writeToSheet({
     id,
     variedad,
@@ -95,7 +92,7 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     etapa,
   });
 
-  // 2) Guardar en PostgreSQL
+  // 2️⃣ Guardar en PostgreSQL
   await saveToPostgres({
     id,
     variedad,
@@ -107,17 +104,15 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
   });
 }
 
-// GET (para el QR)
+// 🌼 Ruta principal de registro (GET)
 app.get("/api/registrar", async (req, res) => {
   try {
     if (!validateIP(req)) {
       return res.status(403).send(`
-        <html lang="es">
-        <head><meta charset="UTF-8"><title>Acceso denegado</title></head>
+        <html lang="es"><head><meta charset="UTF-8"><title>Acceso denegado</title></head>
         <body style="font-family:sans-serif; text-align:center; margin-top:60px;">
           <h1 style="font-size:60px; color:#dc2626;">🚫 IP no autorizada</h1>
-        </body>
-        </html>
+        </body></html>
       `);
     }
 
@@ -126,142 +121,64 @@ app.get("/api/registrar", async (req, res) => {
 
     if (!id || !variedad || !bloque || !tallos || !tamali) {
       return res.status(400).send(`
-        <html lang="es">
-        <head><meta charset="UTF-8"><title>Faltan datos</title></head>
+        <html lang="es"><head><meta charset="UTF-8"><title>Faltan datos</title></head>
         <body style="font-family:sans-serif; text-align:center; margin-top:60px;">
           <h1 style="font-size:60px; color:#dc2626;">⚠️ Faltan parámetros en la URL</h1>
-        </body>
-        </html>
+        </body></html>
       `);
     }
 
-    await processAndSaveData({
-      id,
-      variedad,
-      bloque,
-      tallos,
-      tamali,
-      fecha,
-      etapa,
-      force: forceFlag,
-    });
+    await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa, force: forceFlag });
 
-    // ✅ MENSAJE DE REGISTRO OK
     res.send(`
-      <html lang="es">
-      <head><meta charset="UTF-8"><title>Registro exitoso</title></head>
-      <body style="
-        font-family:sans-serif;
-        text-align:center;
-        margin-top:80px;
-        background-color:#ffffff;
-      ">
-        <h1 style="font-size:100px; color:#22c55e; margin-top:200px; margin-bottom:20px;">
-          ✅ REGISTRO GUARDADO
-        </h1>
+      <html lang="es"><head><meta charset="UTF-8"><title>Registro exitoso</title></head>
+      <body style="font-family:sans-serif; text-align:center; margin-top:80px; background-color:#ffffff;">
+        <h1 style="font-size:100px; color:#22c55e; margin-top:200px; margin-bottom:20px;">✅ REGISTRO GUARDADO</h1>
         <p style="font-size:32px; opacity:0.9;">
-          Variedad: <b>${variedad}</b> &nbsp; | &nbsp;
-          Bloque: <b>${bloque}</b> &nbsp; | &nbsp;
-          Tallos: <b>${tallos}</b>
+          Variedad: <b>${variedad}</b> &nbsp; | &nbsp; Bloque: <b>${bloque}</b> &nbsp; | &nbsp; Tallos: <b>${tallos}</b>
         </p>
-      </body>
-      </html>
+      </body></html>
     `);
   } catch (err) {
     console.error("❌ Error en /api/registrar:", err.message);
 
-    const esDoble =
-      err.code === "DUPLICATE" ||
-      err.message.includes("doble escaneo") ||
-      err.message.includes("ya fue registrado");
-
+    const esDoble = err.code === "DUPLICATE" || err.message.includes("ya fue registrado");
     if (esDoble) {
-      const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.query;
-      const currentUrl = req.originalUrl;
-      const separator = currentUrl.includes("?") ? "&" : "?";
-      const newUrl = `${currentUrl}${separator}force=true`;
+      const { id, variedad, bloque, tallos } = req.query;
+      const newUrl = `${req.originalUrl}${req.originalUrl.includes("?") ? "&" : "?"}force=true`;
 
       return res.status(400).send(`
-        <html lang="es">
-        <head><meta charset="UTF-8"><title>Doble escaneo</title></head>
-        <body style="
-          font-family:sans-serif;
-          text-align:center;
-          margin-top:80px;
-          background-color:#b9deff;
-          color:white;
-        ">
-          <h1 style="font-size:72px; color:#f41606; margin-bottom:20px;">
-            ⚠️ ESTE CÓDIGO YA FUE ESCANEADO
-          </h1>
-          <p style="font-size:30px; opacity:0.9;">
-            Variedad: <b>${variedad}</b> &nbsp; | &nbsp;
-            Bloque: <b>${bloque}</b> &nbsp; | &nbsp;
-            Tallos: <b>${tallos}</b>
-          </p>
-          <button
-            onclick="window.location.href='${newUrl}'"
-            style="
-              margin-top:80px;
-              padding:20px 80px;
-              font-size:55px;
-              background-color:#22c55e;
-              color:white;
-              border:none;
-              border-radius:31px;
-              cursor:pointer;
-            ">
+        <html lang="es"><head><meta charset="UTF-8"><title>Doble escaneo</title></head>
+        <body style="font-family:sans-serif; text-align:center; margin-top:80px; background-color:#b9deff;">
+          <h1 style="font-size:72px; color:#f41606;">⚠️ ESTE CÓDIGO YA FUE ESCANEADO</h1>
+          <p style="font-size:30px;">Variedad: <b>${variedad}</b> | Bloque: <b>${bloque}</b> | Tallos: <b>${tallos}</b></p>
+          <button onclick="window.location.href='${newUrl}'"
+            style="margin-top:80px; padding:20px 80px; font-size:55px; background-color:#22c55e; color:white; border:none; border-radius:31px; cursor:pointer;">
             ✅ Registrar de todas formas
           </button>
-        </body>
-        </html>
+        </body></html>
       `);
     }
 
-    // Otros errores
     res.status(400).send(`
-      <html lang="es">
-      <head><meta charset="UTF-8"><title>Error</title></head>
-      <body style="
-        font-family:sans-serif;
-        text-align:center;
-        margin-top:80px;
-        background-color:#111827;
-        color:white;
-      ">
-        <h1 style="font-size:72px; color:#dc2626; margin-bottom:20px;">
-          ❌ ERROR EN EL REGISTRO
-        </h1>
-        <p style="font-size:30px; opacity:0.9;">
-          ${err.message}
-        </p>
-      </body>
-      </html>
+      <html lang="es"><head><meta charset="UTF-8"><title>Error</title></head>
+      <body style="font-family:sans-serif; text-align:center; margin-top:80px; background-color:#111827; color:white;">
+        <h1 style="font-size:72px; color:#dc2626;">❌ ERROR EN EL REGISTRO</h1>
+        <p style="font-size:30px;">${err.message}</p>
+      </body></html>
     `);
   }
 });
 
-// POST (opcional)
+// 🌺 POST (para integraciones automáticas)
 app.post("/api/registrar", async (req, res) => {
   try {
-    if (!validateIP(req)) {
-      return res.status(403).json({ mensaje: "Acceso denegado: IP no autorizada" });
-    }
+    if (!validateIP(req)) return res.status(403).json({ mensaje: "Acceso denegado: IP no autorizada" });
 
     const { id, variedad, bloque, tallos, tamali, fecha, etapa, force } = req.body;
-    const forceFlag =
-      force === true || force === "true" || force === 1 || force === "1";
+    const forceFlag = force === true || force === "true" || force === 1 || force === "1";
 
-    await processAndSaveData({
-      id,
-      variedad,
-      bloque,
-      tallos,
-      tamali,
-      fecha,
-      etapa,
-      force: forceFlag,
-    });
+    await processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha, etapa, force: forceFlag });
 
     res.json({ mensaje: "✅ Registro guardado" });
   } catch (err) {
@@ -270,7 +187,7 @@ app.post("/api/registrar", async (req, res) => {
   }
 });
 
-// Página base
+// 🌷 Página base de referencia
 app.get("/", (req, res) => {
   res.send(`
     <h2>Sistema de Registro de Flores</h2>
@@ -279,7 +196,7 @@ app.get("/", (req, res) => {
   `);
 });
 
-// Arranque del servidor
+// 🚀 Iniciar servidor
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log("🚀 Servidor activo en puerto " + PORT);
