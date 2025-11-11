@@ -11,7 +11,7 @@ const pool = new Pool({
 
 app.use(express.json());
 
-// Lista de IPs auttorizadas
+// Lista de IPs autorizadas
 const authorizedIPs = [
   "190.60.35.50",
   "186.102.115.133",
@@ -32,18 +32,11 @@ function validateIP(req) {
   return authorizedIPs.includes(clientIP);
 }
 
-// 👉 Guarda también en PostgreSQL
+// 👉 Guarda también en PostgreSQL (solo INSERT, sin ON CONFLICT)
 async function saveToPostgres({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
   await pool.query(
     `INSERT INTO registros (id, variedad, bloque, tallos, tamali, fecha, etapa)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (id) DO UPDATE SET
-       variedad = EXCLUDED.variedad,
-       bloque   = EXCLUDED.bloque,
-       tallos   = EXCLUDED.tallos,
-       tamali   = EXCLUDED.tamali,
-       fecha    = EXCLUDED.fecha,
-       etapa    = EXCLUDED.etapa`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
     [id, variedad, bloque, tallos, tamali, fecha, etapa]
   );
 
