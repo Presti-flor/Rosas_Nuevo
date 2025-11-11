@@ -1,56 +1,167 @@
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
-// Cambiar la forma de obtener las credenciales
-async function writeToSheet(data) {
-  // Obtener las credenciales desde la variable de entorno
-  console.log(process.env.google_sheets_credentials);
-  const creds = JSON.parse(process.env.google_sheets_credentials); // Parseamos la cadena JSON
+const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';
+const SHEET_NAME = 'Hoja111';
 
-  const SPREADSHEET_ID = '1JAsY9wkpp-mhawsrZjSXYeHt3BR3Kuf5KNZNM5FJLx0';  // Reemplaza con tu ID de hoja
-  const SHEET_NAME = 'Hoja111';  // Reemplaza con el nombre de tu hoja en Google Sheets
+// 1) Credenciales desde ENV (Railway)
+function getCreds() {
+  const raw = process.env.google_sheets_credentials;
+  if (!raw) {
+    throw new Error('⚠️ ENV google_sheets_credentials no está definida');
+  }
+  return JSON.parse(raw);
+}
 
-  // Configurar autenticación JWT correctamente
+// 2) Conectar con la hoja
+async function getSheet() {
+  const creds = getCreds();
+
   const serviceAccountAuth = new JWT({
     email: creds.client_email,
-    key: creds.private_key.replace(/\\n/g, '\n'),  // Asegura que los saltos de línea en la clave sean correctos
+    key: creds.private_key.replace(/\\n/g, '\n'),
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 
-  // Crear la instancia del documento de Google Sheets
   const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
+  await doc.loadInfo();
 
-  try {
-    // Cargar la información de la hoja
-    await doc.loadInfo();
+  let sheet = doc.sheetsByTitle[SHEET_NAME];
+  if (!sheet) {
+    sheet = await doc.addSheet({
+      title: SHEET_NAME,
+      headerValues: ['id', 'variedad', 'bloque', 'tallos', 'tamali', 'fecha', 'etapa', 'creado_iso'],
+    });
+  }
 
-    // Obtener la hoja por título
-    let sheet = doc.sheetsByTitle[SHEET_NAME];
+  await sheet.loadHeaderRow();
+  return sheet;
+}
 
-    // Si no existe la hoja, crearla
-    if (!sheet) {
-      sheet = await doc.addSheet({
-        title: SHEET_NAME,
-        headerValues: ['variedad', 'bloque', 'tallos', 'tamali', 'fecha']
-      });
-    }
+// ----------- CACHÉ EN MEMORIA PARA NO LEER SIEMPRE --------------
 
-    // Crear el objeto con los datos que se insertarán en la hoja
+// guardamos las filas y sus “claves” ya calculadas
+let cache = {
+  rows: [],        // array de rows de google-sheets
+  keys: new Set(), // conjunto de llaves buildKey(...)
+  loadedAt: 0      // timestamp (ms)
+};
+
+// cuánto tiempo consideramos válida la caché (ms)
+const CACHE_TTL_MS = 120000; // 2 minutos
+
+function norm(v) {
+  return (v ?? '').toString().trim();
+}
+
+// llave única de un registro
+function buildKey({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
+  return [
+    norm(id),
+    norm(variedad),
+    norm(bloque),
+    norm(tallos),
+    norm(tamali),
+    norm(fecha),
+    norm(etapa),
+  ].join('|');
+}
+
+// cargar o reutilizar cache
+async function getCachedRowsAndKeys() {
+  const now = Date.now();
+
+  // si la caché está reciente, la reutilizamos
+  if (cache.rows.length > 0 && now - cache.loadedAt < CACHE_TTL_MS) {
+    console.log('⚡ Usando datos en caché (sin leer de Sheets)');
+    return cache;
+  }
+
+  const sheet = await getSheet();
+  const rows = await sheet.getRows();
+  const keys = new Set();
+
+  for (const r of rows) {
+    const raw = r._rawData || [];
     const rowData = {
-      variedad: data.variedad,
-      bloque: data.bloque,
-      tallos: data.tallos,
-      tamali: data.tamali,
-      fecha: data.fecha || new Date().toLocaleDateString('es-ES')
+      id: raw[0],
+      variedad: raw[1],
+      bloque: raw[2],
+      tallos: raw[3],
+      tamali: raw[4],
+      fecha: raw[5],
+      etapa: raw[6],
     };
+    keys.add(buildKey(rowData));
+  }
 
-    // Agregar la fila a la hoja de cálculo
-    await sheet.addRow(rowData);
-    console.log('✅ Datos agregados correctamente en Google Sheets');
-  } catch (error) {
-    console.error('❌ Error al interactuar con Google Sheets:', error);
-    throw new Error(`Error al escribir en Google Sheets: ${error.message}`);
+  cache = {
+    rows,
+    keys,
+    loadedAt: now,
+  };
+
+  console.log(`📖 Leídos ${rows.length} registros de Google Sheets (actualizando caché)`);
+  return cache;
+}
+
+// 🔍 ¿Existe ya un registro con EXACTAMENTE la misma combinación?
+async function existsSameRecord(data) {
+  const targetKey = buildKey(data);
+
+  const { keys, rows } = await getCachedRowsAndKeys();
+
+  const encontrado = keys.has(targetKey);
+
+  // debug para ver las últimas combinaciones
+  const total = rows.length;
+  const start = Math.max(0, total - 3);
+  const ultimas = rows.slice(start).map(r => {
+    const raw = r._rawData || [];
+    return buildKey({
+      id: raw[0],
+      variedad: raw[1],
+      bloque: raw[2],
+      tallos: raw[3],
+      tamali: raw[4],
+      fecha: raw[5],
+      etapa: raw[6],
+    });
+  });
+
+  console.log('📜 Últimas combinaciones en hoja:', ultimas);
+  console.log(`🔍 existsSameRecord(${targetKey}) → ${encontrado}`);
+
+  return encontrado;
+}
+
+// 📝 Siempre agrega fila nueva (no borra ni actualiza)
+async function writeToSheet(data) {
+  const sheet = await getSheet();
+
+  const rowObj = {
+    id: data.id || new Date().getTime(),
+    variedad: data.variedad,
+    bloque: data.bloque,
+    tallos: data.tallos,
+    tamali: data.tamali,
+    fecha: data.fecha || new Date().toLocaleDateString('es-ES'),
+    etapa: data.etapa || '',
+    creado_iso: new Date().toISOString(),
+  };
+
+  const newRow = await sheet.addRow(rowObj);
+  console.log('✅ fila escrita en Sheets:', rowObj);
+
+  // actualizamos la caché si ya estaba cargada
+  if (cache.rows.length > 0) {
+    cache.rows.push(newRow);
+    cache.keys.add(buildKey(rowObj));
+    // no tocamos loadedAt para que siga vigente
   }
 }
 
-module.exports = writeToSheet;
+module.exports = {
+  writeToSheet,
+  existsSameRecord,
+};
