@@ -50,7 +50,7 @@ app.post('/api/registrar', async (req, res) => {
   }
 });
 
-// Nuevo endpoint GET para recibir parámetros por URL y registrar en Google Sheets
+// NFuevo endpoint GET para recibir parámetros por URL y registrar en Google Sheets
 app.get('/api/registrar', async (req, res) => {
   try {
     // Extraer parámetros de la query string
