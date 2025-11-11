@@ -11,9 +11,9 @@ const pool = new Pool({
 
 app.use(express.json());
 
-// Lista de IPs autorizadas
+// Lista de IPs autorizadas (para el QR, no para exportar)
 const authorizedIPs = [
-  "181.78.78.61",
+  "190.60.35.50",
   "186.102.115.133",
   "186.102.47.124",
   "186.102.51.69",
@@ -32,13 +32,13 @@ function validateIP(req) {
   return authorizedIPs.includes(clientIP);
 }
 
-// 👉 Guarda también en PostgreSQL
+// 👉 Guarda también en PostgreSQL (solo INSERT, sin ON CONFLICT)
 async function saveToPostgres({ id, variedad, bloque, tallos, tamali, fecha, etapa }) {
   await pool.query(
-  `INSERT INTO registros (id, variedad, bloque, tallos, tamali, fecha, etapa)
-   VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-  [id, variedad, bloque, tallos, tamali, fecha, etapa]
-);
+    `INSERT INTO registros (id, variedad, bloque, tallos, tamali, fecha, etapa)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, variedad, bloque, tallos, tamali, fecha, etapa]
+  );
 
   console.log(`💾 Guardado en PostgreSQL: id=${id}, variedad=${variedad}, bloque=${bloque}`);
 }
@@ -76,7 +76,7 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     }
   }
 
-  // 1) Guardar en Google Sheets
+  // 1️⃣ Guardar en Google Sheets (hoja del día)
   await writeToSheet({
     id,
     variedad,
@@ -87,7 +87,7 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     etapa,
   });
 
-  // 2) Guardar en PostgreSQL
+  // 2️⃣ Guardar en PostgreSQL (base histórica)
   await saveToPostgres({
     id,
     variedad,
@@ -98,35 +98,20 @@ async function processAndSaveData({ id, variedad, bloque, tallos, tamali, fecha,
     etapa,
   });
 }
-// ❌ Eliminar un registro de la base PostgredSQL
-app.post("/api/eliminar", async (req, res) => {
+
+/* ✅ NUEVO ENDPOINT: exportar histórico completo desde PostgreSQL
+   IMPORTANTE: aquí NO usamos validateIP, porque lo quiere llamar Google Sheets
+*/
+app.get("/api/exportar", async (req, res) => {
   try {
-    const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
-
-    if (!id || !variedad || !bloque || !tallos || !tamali || !fecha) {
-      return res.status(400).json({ ok: false, error: "Faltan datos para identificar el registro" });
-    }
-
-    const result = await pool.query(
-      `DELETE FROM registros
-       WHERE id = $1
-         AND variedad = $2
-         AND bloque = $3
-         AND tallos = $4
-         AND tamali = $5
-         AND fecha = $6
-         AND (etapa = $7 OR $7 IS NULL)`,
-      [id, variedad, bloque, tallos, tamali, fecha, etapa || null]
-    );
-
-    console.log(`🗑 Eliminados en PostgreSQL: ${result.rowCount} filas`);
-
-    res.json({ ok: true, eliminados: result.rowCount });
+    const result = await pool.query("SELECT * FROM registros ORDER BY fecha DESC");
+    res.json(result.rows);
   } catch (err) {
-    console.error("❌ Error en /api/eliminar:", err);
-    res.status(500).json({ ok: false, error: err.message });
+    console.error("❌ Error al exportar datos:", err);
+    res.status(500).json({ error: err.message });
   }
 });
+
 // GET (para el QR)
 app.get("/api/registrar", async (req, res) => {
   try {
