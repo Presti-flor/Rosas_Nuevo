@@ -111,7 +111,37 @@ app.get("/api/exportar", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// ❌ Eliminar un registro de la base PostgreSQL
+app.post("/api/eliminar", async (req, res) => {
+  try {
+    const { id, variedad, bloque, tallos, tamali, fecha, etapa } = req.body;
 
+    if (!id || !variedad || !bloque || !tallos || !tamali || !fecha) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "Faltan datos para identificar el registro" });
+    }
+
+    const result = await pool.query(
+      `DELETE FROM registros
+       WHERE id = $1
+         AND variedad = $2
+         AND bloque = $3
+         AND tallos = $4
+         AND tamali = $5
+         AND fecha = $6
+         AND (etapa = $7 OR $7 IS NULL)`,
+      [id, variedad, bloque, tallos, tamali, fecha, etapa || null]
+    );
+
+    console.log(`🗑 Eliminados en PostgreSQL: ${result.rowCount} filas`);
+
+    res.json({ ok: true, eliminados: result.rowCount });
+  } catch (err) {
+    console.error("❌ Error en /api/eliminar:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 // GET (para el QR)
 app.get("/api/registrar", async (req, res) => {
   try {
